@@ -1,0 +1,17 @@
+{
+  "name": "@lemon-tea/provider-file-import",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@lemon-tea/provider-sdk": "*",
+    "@lemon-tea/shared-types": "*",
+    "@lemon-tea/telemetry-core": "*",
+    "hyparquet": "^1.31.5",
+    "zod": "^4.6.7"
+  }
+}

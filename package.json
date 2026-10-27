@@ -1,0 +1,39 @@
+{
+  "name": "the-lemon-tea",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Open-source Formula 1 telemetry, race intelligence and predictive analytics platform with a native MCP server.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/providers/*",
+    "services/jobs"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @lemon-tea/api & npm run dev -w @lemon-tea/web",
+    "dev:api": "npm run dev -w @lemon-tea/api",
+    "dev:web": "npm run dev -w @lemon-tea/web",
+    "build": "npm run build -w @lemon-tea/web",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "tsx packages/db/src/migrate.ts",
+    "ingest": "tsx apps/api/src/cli/ingest.ts",
+    "jobs": "tsx services/jobs/src/runner.ts",
+    "mcp:stdio": "tsx apps/mcp/src/stdio.ts",
+    "bench": "tsx tests/bench/run.ts",
+    "test:e2e": "playwright test -c tests/e2e/playwright.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

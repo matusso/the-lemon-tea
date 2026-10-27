@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build -w @lemon-tea/web
+      - name: Worker bundle (dry run)
+        working-directory: infrastructure/cloudflare
+        run: npx wrangler deploy --dry-run --outdir ../../.cache/worker
+
+  python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/analytics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - run: uv run pytest -q
+
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: timescale/timescaledb:2.24.0-pg17
+        env:
+          POSTGRES_USER: lemontea_owner
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: lemontea
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U lemontea_owner -d lemontea" --health-interval 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx packages/db/src/migrate.ts
+        env:
+          MIGRATION_DATABASE_URL: postgres://lemontea_owner:ci-only-password@localhost:5432/lemontea
+          APP_DB_PASSWORD: ci-only-app-password
+      - name: Row-level security smoke test
+        env:
+          DATABASE_URL: postgres://lemontea_app:ci-only-app-password@localhost:5432/lemontea
+          MIGRATION_DATABASE_URL: postgres://lemontea_owner:ci-only-password@localhost:5432/lemontea
+        run: npx vitest run tests/db

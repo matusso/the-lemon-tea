@@ -1,0 +1,9 @@
+{
+  "name": "@lemon-tea/domain",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {"@lemon-tea/shared-types": "*", "@lemon-tea/telemetry-core": "*", "@lemon-tea/circuit-engine": "*", "@lemon-tea/provider-sdk": "*", "@lemon-tea/auth": "*", "@lemon-tea/synchronization": "*"}
+}

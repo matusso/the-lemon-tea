@@ -1,0 +1,9 @@
+{
+  "name": "@lemon-tea/mcp-tools",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {"@lemon-tea/shared-types": "*", "@lemon-tea/domain": "*", "@lemon-tea/auth": "*", "@modelcontextprotocol/sdk": "^1.32.2", "zod": "^4.6.7"}
+}

@@ -1,0 +1,74 @@
+# The Lemon Tea — local self-hosted stack.
+#   cp .env.example .env   # set secrets
+#   docker compose up --build
+# Web + API + MCP: http://localhost:8787   (MCP endpoint: http://localhost:8787/mcp)
+name: lemon-tea
+
+services:
+  db:
+    image: timescale/timescaledb:2.24.0-pg17
+    environment:
+      POSTGRES_USER: lemontea_owner
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:?set DB_OWNER_PASSWORD in .env}
+      POSTGRES_DB: lemontea
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lemontea_owner -d lemontea"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    build: { context: ., dockerfile: infrastructure/docker/Dockerfile.node }
+    command: ["npx", "tsx", "packages/db/src/migrate.ts"]
+    environment:
+      MIGRATION_DATABASE_URL: postgres://lemontea_owner:${DB_OWNER_PASSWORD}@db:5432/lemontea
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+    depends_on:
+      db: { condition: service_healthy }
+
+  api:
+    build: { context: ., dockerfile: infrastructure/docker/Dockerfile.node, args: { BUILD_WEB: "true" } }
+    command: ["npx", "tsx", "apps/api/src/server.ts"]
+    environment:
+      DATABASE_URL: postgres://lemontea_app:${APP_DB_PASSWORD}@db:5432/lemontea
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8787}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?set APP_JWT_SECRET in .env}
+      # Encrypts users' provider account tokens (e.g. the Formula 1 account) at rest.
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ALLOW_ANONYMOUS: ${ALLOW_ANONYMOUS:-true}
+      PUBLIC_SOURCES: ${PUBLIC_SOURCES:-}
+      OPENF1_USERNAME: ${OPENF1_USERNAME:-}
+      OPENF1_PASSWORD: ${OPENF1_PASSWORD:-}
+      WEB_DIST: /app/apps/web/dist
+    ports:
+      - "127.0.0.1:${PORT:-8787}:8787"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  jobs:
+    build: { context: ., dockerfile: infrastructure/docker/Dockerfile.node }
+    command: ["npx", "tsx", "services/jobs/src/runner.ts"]
+    environment:
+      DATABASE_URL: postgres://lemontea_app:${APP_DB_PASSWORD}@db:5432/lemontea
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
+      OPENF1_USERNAME: ${OPENF1_USERNAME:-}
+      OPENF1_PASSWORD: ${OPENF1_PASSWORD:-}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  analytics:
+    build: { context: services/analytics, dockerfile: ../../infrastructure/docker/Dockerfile.analytics }
+    profiles: ["analytics"]
+    environment:
+      DATABASE_URL: postgres://lemontea_owner:${DB_OWNER_PASSWORD}@db:5432/lemontea
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+volumes:
+  db-data:

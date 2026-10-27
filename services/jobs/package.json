@@ -1,0 +1,19 @@
+{
+  "name": "@lemon-tea/jobs",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/runner.ts"
+  },
+  "dependencies": {
+    "@lemon-tea/api": "*",
+    "@lemon-tea/auth": "*",
+    "@lemon-tea/domain": "*",
+    "@lemon-tea/shared-types": "*"
+  },
+  "exports": {
+    "./worker": "./src/worker.ts"
+  }
+}

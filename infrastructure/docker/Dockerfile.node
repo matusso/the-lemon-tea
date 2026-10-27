@@ -1,0 +1,18 @@
+# Node runtime for api / migrate / jobs (TypeScript executed with tsx; no separate build step).
+FROM node:22-bookworm-slim AS base
+WORKDIR /app
+ENV NODE_ENV=production NPM_CONFIG_UPDATE_NOTIFIER=false
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/mcp/package.json apps/mcp/
+COPY apps/web/package.json apps/web/
+COPY packages packages
+COPY services/jobs/package.json services/jobs/
+RUN npm ci --include=dev --ignore-scripts && npm rebuild esbuild
+COPY . .
+ARG BUILD_WEB=false
+RUN if [ "$BUILD_WEB" = "true" ]; then npm run build -w @lemon-tea/web; fi
+RUN useradd --system --uid 10001 lemontea && chown -R lemontea /app
+USER lemontea
+EXPOSE 8787
+CMD ["npx", "tsx", "apps/api/src/server.ts"]

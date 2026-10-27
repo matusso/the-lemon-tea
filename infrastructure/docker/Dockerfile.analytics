@@ -1,0 +1,11 @@
+# Offline analytics (calibration, backtests). Build context: services/analytics
+FROM ghcr.io/astral-sh/uv:0.13.5-python3.13-bookworm-slim
+WORKDIR /srv
+COPY pyproject.toml uv.lock* ./
+RUN uv sync --no-dev --no-install-project
+COPY src src
+RUN uv sync --no-dev
+RUN useradd --system --uid 10002 analytics && chown -R analytics /srv
+USER analytics
+ENTRYPOINT ["uv", "run", "--no-sync", "lemontea-analytics"]
+CMD ["backtest", "--years", "2025"]

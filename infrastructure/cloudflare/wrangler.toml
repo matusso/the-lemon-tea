@@ -1,0 +1,50 @@
+# The Lemon Tea on Cloudflare Workers. See docs/DEPLOYMENT.md.
+# Secrets (never in this file):  wrangler secret put APP_JWT_SECRET, wrangler secret put APP_ENCRYPTION_KEY
+# (required for users to connect a Formula 1 account), and OPENF1_USERNAME / OPENF1_PASSWORD if licensed
+name = "the-lemon-tea"
+main = "../../apps/api/src/worker.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+PUBLIC_URL = "https://lemontea.example.com"
+ALLOW_ANONYMOUS = "true"
+ALLOWED_ORIGINS = ""
+PUBLIC_SOURCES = ""
+RATE_LIMIT_PER_MINUTE = "240"
+
+# PostgreSQL (TimescaleDB) via Hyperdrive. Create with:
+#   wrangler hyperdrive create lemontea --connection-string="postgres://lemontea_app:...@host:5432/lemontea"
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "REPLACE_WITH_HYPERDRIVE_ID"
+
+[assets]
+directory = "../../apps/web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/mcp", "/oauth/*", "/.well-known/*", "/ws/*"]
+
+[[durable_objects.bindings]]
+name = "LIVE"
+class_name = "LiveSession"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["LiveSession"]
+
+[[queues.producers]]
+binding = "JOBS"
+queue = "lemontea-jobs"
+
+[[queues.consumers]]
+queue = "lemontea-jobs"
+max_batch_size = 1
+max_retries = 3
+dead_letter_queue = "lemontea-jobs-dlq"
+
+[triggers]
+crons = ["* * * * *"]
+
+[observability]
+enabled = true
