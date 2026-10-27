@@ -1,0 +1,17 @@
+{
+  "name": "@lemon-tea/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": { "lemon-tea-mcp": "./src/stdio.ts" },
+  "scripts": { "start": "tsx src/stdio.ts" },
+  "dependencies": {
+    "@lemon-tea/api": "*",
+    "@lemon-tea/auth": "*",
+    "@lemon-tea/db": "*",
+    "@lemon-tea/domain": "*",
+    "@lemon-tea/mcp-tools": "*",
+    "@modelcontextprotocol/sdk": "^1.32.2"
+  }
+}

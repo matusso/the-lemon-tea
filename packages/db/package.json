@@ -1,0 +1,9 @@
+{
+  "name": "@lemon-tea/db",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": {"@lemon-tea/shared-types": "*", "postgres": "^3.4.9", "@lemon-tea/auth": "*", "@lemon-tea/domain": "*", "@lemon-tea/telemetry-core": "*"}
+}

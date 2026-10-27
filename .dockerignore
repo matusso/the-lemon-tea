@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+.git
+.env
+.env.*
+.cache
+.wrangler
+**/dist
+services/analytics/.venv
+**/__pycache__
