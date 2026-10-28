@@ -39,7 +39,7 @@ export function TelemetryStack({ cmp, channels, height = "100%" }: { cmp: Compar
     const gap = n > 4 ? 1.6 : 3;
     const h = (100 - top - bottom - gap * (n - 1)) / n;
     const grids = chans.map((_, i) => ({ left: 52, right: 14, top: `${top + i * (h + gap)}%`, height: `${h}%` }));
-    const corners = cmp.corners.map((c) => ({ xAxis: c.corner.minSpeedDistance, label: { show: true, formatter: c.corner.label, color: "#646b76", fontSize: 9, position: "insideStartTop" as const } }));
+    const corners = cmp.corners.map((c) => ({ xAxis: c.corner.minSpeedDistance, label: { show: true, formatter: c.corner.label, color: "#82858f", fontSize: 10, position: "insideStartTop" as const } }));
     const series: echarts.SeriesOption[] = [];
     chans.forEach((ch, i) => {
       const xy = (arr: number[] | undefined) => (arr ? tr.a.distance.map((d, k) => [d, arr[k] ?? null]) : []);
@@ -50,7 +50,7 @@ export function TelemetryStack({ cmp, channels, height = "100%" }: { cmp: Compar
           xAxisIndex: i,
           yAxisIndex: i,
           showSymbol: false,
-          lineStyle: { width: 1.4, color: "#e7e9ec" },
+          lineStyle: { width: 1.4, color: "#f5f5f7" },
           areaStyle: { color: "rgba(232,212,77,0.08)", origin: 0 },
           data: tr.a.distance.map((d, k) => [d, tr.delta[k] ?? null]),
           markLine: { silent: true, symbol: "none", lineStyle: { color: "#2a2e36", type: "dashed" }, data: [{ yAxis: 0 }, ...corners] },
@@ -80,7 +80,7 @@ export function TelemetryStack({ cmp, channels, height = "100%" }: { cmp: Compar
         trigger: "axis",
         backgroundColor: "rgba(18,20,24,0.95)",
         borderColor: "#31363f",
-        textStyle: { ...baseTextStyle, color: "#e7e9ec" },
+        textStyle: { ...baseTextStyle, color: "#f5f5f7" },
         valueFormatter: (v) => (typeof v === "number" ? v.toFixed(Math.abs(v) < 10 ? 3 : 0) : String(v)),
       },
       grid: grids,
@@ -100,12 +100,12 @@ export function TelemetryStack({ cmp, channels, height = "100%" }: { cmp: Compar
         name: `${CHANNELS[ch].label}${CHANNELS[ch].unit ? ` (${CHANNELS[ch].unit})` : ""}`,
         nameLocation: "middle",
         nameGap: 38,
-        nameTextStyle: { color: "#646b76", fontSize: 9 },
+        nameTextStyle: { color: "#82858f", fontSize: 10 },
         scale: CHANNELS[ch].min === undefined,
         ...(CHANNELS[ch].min !== undefined ? { min: CHANNELS[ch].min } : {}),
         ...(CHANNELS[ch].max !== undefined ? { max: CHANNELS[ch].max } : {}),
         splitNumber: 2,
-        axisLabel: { color: AXIS.color, fontSize: 9 },
+        axisLabel: { color: AXIS.color, fontSize: 10 },
         splitLine: { lineStyle: { color: AXIS.split } },
       })),
       dataZoom: [{ type: "inside", xAxisIndex: chans.map((_, i) => i), filterMode: "none" }],
@@ -126,7 +126,7 @@ export function TelemetryStack({ cmp, channels, height = "100%" }: { cmp: Compar
 
   return (
     <div style={{ height }} className="relative">
-      <div className="absolute left-14 top-1 z-10 flex items-center gap-3 text-[10px]">
+      <div className="absolute left-14 top-1 z-10 flex items-center gap-3 text-[11px]">
         <span style={{ color: COLOR_A }}>━ A {cmp.a.driverCode} L{cmp.a.lapNumber}</span>
         <span style={{ color: COLOR_B }}>╍ B {cmp.b.driverCode} L{cmp.b.lapNumber}</span>
         <span className="text-fg-3">Δ negative = A ahead · scroll to zoom</span>

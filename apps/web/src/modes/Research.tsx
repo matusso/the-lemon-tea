@@ -41,8 +41,8 @@ export default function Research() {
           {history.isError && <ErrorNote error={history.error} />}
           {history.data && history.data.length === 0 && <Empty>No stored forecasts for this weekend yet. Run a qualifying forecast while signed in.</Empty>}
           {history.data && history.data.length > 0 && (
-            <table className="num w-full text-[11px]">
-              <thead className="text-left text-[9px] uppercase tracking-wider text-fg-3">
+            <table className="num w-full text-[12px]">
+              <thead className="text-left text-[10px] uppercase tracking-wider text-fg-3">
                 <tr>
                   <th className="px-2">Created</th>
                   <th>Data as of</th>
@@ -70,12 +70,12 @@ export default function Research() {
               </tbody>
             </table>
           )}
-          <div className="p-3 text-[10px] text-fg-3">Only forecasts whose data cut-off precedes the target session are valid for evaluation (no future-information leakage).</div>
+          <div className="p-3 text-[11px] text-fg-3">Only forecasts whose data cut-off precedes the target session are valid for evaluation (no future-information leakage).</div>
         </Frame>
         <Frame title="Models & backtests">
           {metrics.isError && <ErrorNote error={metrics.error} />}
           {metrics.data && (
-            <div className="space-y-3 p-3 text-[11px]">
+            <div className="space-y-3 p-3 text-[12px]">
               {metrics.data.note && <div className="rounded border border-lemon/30 bg-lemon/5 p-2 text-lemon">{metrics.data.note}</div>}
               <div>
                 <div className="label mb-1">Built-in algorithm versions</div>
@@ -110,22 +110,22 @@ export default function Research() {
         {sources.isError && <ErrorNote error={sources.error} />}
         <div className="space-y-2 p-3">
           {sources.data?.map((s) => (
-            <div key={String(s.id)} className="rounded border border-line bg-ink-0/50 p-2 text-[11px]">
+            <div key={String(s.id)} className="rounded border border-line bg-ink-0/50 p-2 text-[12px]">
               <div className="flex items-center gap-2">
                 <span className="font-semibold">{String(s.name)}</span>
                 <span className="num text-fg-3">{String(s.id)}</span>
-                <span className={`ml-auto rounded border px-1 text-[9px] uppercase ${s.enabled ? "border-good/40 text-good" : "border-line-2 text-fg-3"}`}>{s.enabled ? "enabled" : "disabled"}</span>
-                <span className={`rounded border px-1 text-[9px] uppercase ${s.publicDisplayAllowed ? "border-teal/40 text-teal" : "border-line-2 text-fg-3"}`}>{s.publicDisplayAllowed ? "public display" : "not public"}</span>
+                <span className={`ml-auto rounded border px-1 text-[10px] uppercase ${s.enabled ? "border-good/40 text-good" : "border-line-2 text-fg-3"}`}>{s.enabled ? "enabled" : "disabled"}</span>
+                <span className={`rounded border px-1 text-[10px] uppercase ${s.publicDisplayAllowed ? "border-teal/40 text-teal" : "border-line-2 text-fg-3"}`}>{s.publicDisplayAllowed ? "public display" : "not public"}</span>
               </div>
               <div className="mt-1 text-fg-2">{String(s.license ?? dash)}</div>
-              <div className="num mt-1 grid grid-cols-2 gap-x-3 text-[10px] text-fg-3">
+              <div className="num mt-1 grid grid-cols-2 gap-x-3 text-[11px] text-fg-3">
                 <span>redistribution: {String(s.redistribution ?? dash)}</span>
                 <span>rate limit: {String(s.rateLimit ?? dash)}</span>
                 <span>coverage: {String(s.historicalCoverage ?? dash)}</span>
                 <span>updates: {String(s.updateFrequency ?? dash)}</span>
               </div>
-              {Array.isArray(s.missingChannels) && s.missingChannels.length > 0 && <div className="mt-1 text-[10px] text-fg-3">missing channels: {(s.missingChannels as string[]).join(", ")}</div>}
-              {s.attribution ? <div className="mt-1 text-[10px] text-fg-3">{String(s.attribution)}</div> : null}
+              {Array.isArray(s.missingChannels) && s.missingChannels.length > 0 && <div className="mt-1 text-[11px] text-fg-3">missing channels: {(s.missingChannels as string[]).join(", ")}</div>}
+              {s.attribution ? <div className="mt-1 text-[11px] text-fg-3">{String(s.attribution)}</div> : null}
             </div>
           ))}
         </div>

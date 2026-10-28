@@ -69,7 +69,7 @@ function Quali({ q }: { q: QualiResp }) {
   const calibrated = q.confidenceType === "calibrated_probability";
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 text-[10px] text-fg-3">
+      <div className="flex flex-wrap items-center gap-2 px-3 py-1.5 text-[11px] text-fg-3">
         <KindBadge kind="estimated" />
         <span>
           {q.modelVersion} · params {q.paramsVersion} · as of {q.asOf.slice(0, 16).replace("T", " ")} UTC
@@ -77,8 +77,8 @@ function Quali({ q }: { q: QualiResp }) {
         {!calibrated && <span className="rounded border border-lemon/40 px-1 text-lemon">probabilities uncalibrated</span>}
         {q.predictionId && <span>snapshot saved</span>}
       </div>
-      <table className="num w-full text-[11px]">
-        <thead className="text-left text-[9px] uppercase tracking-wider text-fg-3">
+      <table className="num w-full text-[12px]">
+        <thead className="text-left text-[10px] uppercase tracking-wider text-fg-3">
           <tr>
             <th className="px-2">Exp.</th>
             <th>Driver</th>
@@ -121,7 +121,7 @@ function Quali({ q }: { q: QualiResp }) {
               </tr>
               {open === d.driverNumber && (
                 <tr className="bg-ink-0/60">
-                  <td colSpan={9} className="px-3 py-2 text-[11px] text-fg-2">
+                  <td colSpan={9} className="px-3 py-2 text-[12px] text-fg-2">
                     {d.explanation}
                     <div className="mt-1 text-fg-3">
                       adjustments: {Object.entries(d.evidence.adjustments).map(([k, v]) => `${k} ${fmtNum(v, 3, true)} s`).join(" · ")} · representative laps {d.evidence.representativeLaps}
@@ -133,7 +133,7 @@ function Quali({ q }: { q: QualiResp }) {
           ))}
         </tbody>
       </table>
-      <div className="grid gap-3 p-3 text-[11px] md:grid-cols-3">
+      <div className="grid gap-3 p-3 text-[12px] md:grid-cols-3">
         <div>
           <div className="label mb-1">Teammate gaps (expected ± sd)</div>
           {q.teammateGaps.map((g) => (
@@ -177,7 +177,7 @@ function Quali({ q }: { q: QualiResp }) {
 
 function Assumptions({ items }: { items: string[] }) {
   return (
-    <ul className="list-disc space-y-0.5 px-3 pb-3 pl-7 text-[10px] text-fg-3">
+    <ul className="list-disc space-y-0.5 px-3 pb-3 pl-7 text-[11px] text-fg-3">
       {items.map((a) => (
         <li key={a}>{a}</li>
       ))}
@@ -188,8 +188,8 @@ function Assumptions({ items }: { items: string[] }) {
 function Pace({ p }: { p: PaceResp }) {
   return (
     <div>
-      <table className="num w-full text-[11px]">
-        <thead className="text-left text-[9px] uppercase tracking-wider text-fg-3">
+      <table className="num w-full text-[12px]">
+        <thead className="text-left text-[10px] uppercase tracking-wider text-fg-3">
           <tr>
             <th className="px-2">#</th>
             <th>Driver</th>
@@ -225,7 +225,7 @@ function Pace({ p }: { p: PaceResp }) {
       <div className="p-3">
         <div className="label mb-1">Team race-pace ranking</div>
         {p.teams.map((t, i) => (
-          <div key={t.teamName} className="num flex gap-3 text-[11px]">
+          <div key={t.teamName} className="num flex gap-3 text-[12px]">
             <span className="w-4 text-fg-3">{i + 1}</span>
             <span className="w-40 truncate">{t.teamName}</span>
             <span>{fmtLap(t.referencePace)}</span>
@@ -235,7 +235,7 @@ function Pace({ p }: { p: PaceResp }) {
           </div>
         ))}
         <div className="label mb-1 mt-3">Lap classification</div>
-        <div className="num flex flex-wrap gap-x-3 text-[10px] text-fg-2">
+        <div className="num flex flex-wrap gap-x-3 text-[11px] text-fg-2">
           {Object.entries(p.lapClassCounts).map(([k, v]) => (
             <span key={k}>
               {k.replaceAll("_", " ")}: {v}
@@ -254,8 +254,8 @@ function Deg({ d }: { d: DegResp }) {
       animation: false,
       textStyle: baseTextStyle,
       grid: { left: 46, right: 12, top: 24, bottom: 30 },
-      legend: { top: 0, textStyle: { color: "#9aa1ab", fontSize: 10 } },
-      tooltip: { trigger: "axis" as const, backgroundColor: "rgba(18,20,24,0.95)", borderColor: "#31363f", textStyle: { color: "#e7e9ec", fontSize: 10 } },
+      legend: { top: 0, textStyle: { color: "#b9bbc6", fontSize: 11 } },
+      tooltip: { trigger: "axis" as const, backgroundColor: "rgba(18,20,24,0.95)", borderColor: "#31363f", textStyle: { color: "#f5f5f7", fontSize: 11 } },
       xAxis: { type: "value" as const, name: "tyre age (laps)", nameLocation: "middle" as const, nameGap: 20, max: 35, axisLabel: { color: AXIS.color }, splitLine: { show: false } },
       yAxis: { type: "value" as const, name: "s vs fresh", axisLabel: { color: AXIS.color }, splitLine: { lineStyle: { color: AXIS.split } } },
       series: d.compounds.map((c) => ({
@@ -274,8 +274,8 @@ function Deg({ d }: { d: DegResp }) {
       <div className="h-56">
         <EChart option={option} />
       </div>
-      <table className="num w-full text-[11px]">
-        <thead className="text-left text-[9px] uppercase tracking-wider text-fg-3">
+      <table className="num w-full text-[12px]">
+        <thead className="text-left text-[10px] uppercase tracking-wider text-fg-3">
           <tr>
             <th className="px-2">Compound</th>
             <th className="text-right">s/lap</th>
@@ -303,18 +303,18 @@ function Deg({ d }: { d: DegResp }) {
       {d.compounds
         .filter((c) => c.warning)
         .map((c) => (
-          <div key={c.compound} className="mx-2 mt-2 rounded border border-line px-2 py-1 text-[11px] text-amber-300">
+          <div key={c.compound} className="mx-2 mt-2 rounded border border-line px-2 py-1 text-[12px] text-amber-300">
             {c.compound}: {c.warning}
           </div>
         ))}
       <div className="p-3">
         <div className="label mb-1">Model comparison (holdout MAE, last 3 laps of each stint)</div>
         {d.modelComparison.map((m) => (
-          <div key={m.model} className="num text-[11px] text-fg-2">
+          <div key={m.model} className="num text-[12px] text-fg-2">
             {m.model.replaceAll("_", " ")}: {Number.isFinite(m.holdoutMae) ? `${m.holdoutMae.toFixed(3)} s` : dash} ({m.stintsEvaluated} stints)
           </div>
         ))}
-        <div className="mt-2 text-[10px] text-fg-3">{d.inferred_tyre_state_note}</div>
+        <div className="mt-2 text-[11px] text-fg-3">{d.inferred_tyre_state_note}</div>
       </div>
       <Assumptions items={d.assumptions} />
     </div>
@@ -338,9 +338,9 @@ export default function Performance() {
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line bg-ink-1/80 px-3 py-1.5">
         <span className="label">Practice inputs</span>
-        {practice.length === 0 && <span className="text-[11px] text-fg-3">No ingested practice/sprint sessions for this weekend.</span>}
+        {practice.length === 0 && <span className="text-[12px] text-fg-3">No ingested practice/sprint sessions for this weekend.</span>}
         {practice.map((s) => (
-          <label key={s.id} className="flex items-center gap-1 text-[11px]">
+          <label key={s.id} className="flex items-center gap-1 text-[12px]">
             <input type="checkbox" checked={picked.includes(s.id)} onChange={(e) => setPicked(e.target.checked ? [...picked, s.id] : picked.filter((x) => x !== s.id))} />
             {s.name}
           </label>

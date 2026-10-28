@@ -59,8 +59,8 @@ export function TimingTower({ bundle }: { bundle: TimingBundle }) {
       }
       right={<input type="text" placeholder="filter" className="w-20" value={filter} onChange={(e) => setFilter(e.target.value)} />}
     >
-      <table className="num w-full border-collapse text-[11px]">
-        <thead className="sticky top-0 z-10 bg-ink-1 text-left text-[9px] uppercase tracking-wider text-fg-3">
+      <table className="num w-full border-collapse text-[12px]">
+        <thead className="sticky top-0 z-10 bg-ink-1 text-left text-[10px] uppercase tracking-wider text-fg-3">
           <tr>
             {th("position", "P", "w-6 text-right")}
             {th("number", "Driver")}
@@ -96,7 +96,7 @@ export function TimingTower({ bundle }: { bundle: TimingBundle }) {
                     <span className="w-5 text-right text-fg-3">{r.driverNumber}</span>
                     <span className={`font-bold ${selA ? "text-lemon" : selB ? "text-teal" : "text-fg"}`}>{r.code}</span>
                     {pinned.includes(r.driverNumber) && <span className="text-lemon">•</span>}
-                    {STATUS[r.status] && <span className="rounded bg-ink-3 px-1 text-[9px] text-fg-2">{STATUS[r.status]}</span>}
+                    {STATUS[r.status] && <span className="rounded bg-ink-3 px-1 text-[10px] text-fg-2">{STATUS[r.status]}</span>}
                   </div>
                 </td>
                 <td className="px-1 text-right text-fg-2">{r.lapsDown ? `+${r.lapsDown}L` : r.position === 1 ? "—" : fmtNum(r.gapToLeader, 3, true)}</td>
@@ -123,7 +123,7 @@ export function TimingTower({ bundle }: { bundle: TimingBundle }) {
           })}
         </tbody>
       </table>
-      {!rows.some((r) => r.currentLap > 0) && <div className="p-3 text-[11px] text-fg-3">No laps started at this point of the session. Press play or move the scrubber.</div>}
+      {!rows.some((r) => r.currentLap > 0) && <div className="p-3 text-[12px] text-fg-3">No laps started at this point of the session. Press play or move the scrubber.</div>}
     </Frame>
   );
 }

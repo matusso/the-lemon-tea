@@ -131,7 +131,7 @@ export const PredictRaceResultInput = z.object({
   seed: z.number().int().default(42),
 });
 
-export const JobKind = z.enum(["simulate_strategy", "predict_race_result", "predict_qualifying", "ingest_session"]);
+export const JobKind = z.enum(["simulate_strategy", "predict_race_result", "predict_qualifying", "ingest_session", "ingest_weekend"]);
 
 export const CreateJobInput = z.object({
   kind: JobKind,
@@ -143,6 +143,15 @@ export const JobIdInput = z.object({ jobId: z.string().uuid() });
 
 export const IngestInput = z.object({
   sessionId: SessionId,
+  channels: z.array(z.enum(["timing", "car_data", "location"])).default(["timing", "car_data", "location"]),
+  visibility: z.enum(["public", "private"]).default("private"),
+});
+
+/** A whole race weekend (all practice, qualifying, sprint and race sessions of one meeting) as one job. */
+export const IngestWeekendInput = z.object({
+  source: z.string().min(2).max(32).regex(/^[a-z0-9]+$/),
+  year: z.number().int().min(1950).max(2100),
+  meetingKey: z.string().min(1).max(32).regex(/^[A-Za-z0-9_-]+$/),
   channels: z.array(z.enum(["timing", "car_data", "location"])).default(["timing", "car_data", "location"]),
   visibility: z.enum(["public", "private"]).default("private"),
 });

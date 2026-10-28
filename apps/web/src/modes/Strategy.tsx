@@ -50,7 +50,7 @@ function StintTimeline({ strategies, total }: { strategies: { name: string; stin
         let acc = 0;
         return (
           <div key={s.name} className="flex items-center gap-2">
-            <span className="w-24 truncate text-[11px] text-fg-2">{s.name}</span>
+            <span className="w-24 truncate text-[12px] text-fg-2">{s.name}</span>
             <div className="relative h-4 flex-1 overflow-hidden rounded bg-ink-0">
               {s.stints.map((st, i) => {
                 const left = (acc / total) * 100;
@@ -58,7 +58,7 @@ function StintTimeline({ strategies, total }: { strategies: { name: string; stin
                 return (
                   <div
                     key={i}
-                    className="absolute top-0 flex h-full items-center justify-center border-r-2 border-ink-0 text-[9px] font-bold text-ink-0"
+                    className="absolute top-0 flex h-full items-center justify-center border-r-2 border-ink-0 text-[10px] font-bold text-ink-0"
                     style={{ left: `${left}%`, width: `${(st.laps / total) * 100}%`, background: COMPOUND_COLOR[st.compound] ?? "#888" }}
                     title={`${st.compound} ${st.laps} laps`}
                   >
@@ -135,9 +135,9 @@ export default function Strategy() {
       animation: false,
       textStyle: baseTextStyle,
       grid: { left: 40, right: 10, top: 28, bottom: 28 },
-      legend: { top: 0, textStyle: { color: "#9aa1ab", fontSize: 10 } },
-      tooltip: { trigger: "axis" as const, backgroundColor: "rgba(18,20,24,0.95)", borderColor: "#31363f", textStyle: { color: "#e7e9ec", fontSize: 10 }, valueFormatter: (v: unknown) => fmtPct(Number(v)) },
-      xAxis: { type: "category" as const, data: Array.from({ length: n }, (_, i) => `P${i + 1}`), axisLabel: { color: AXIS.color, fontSize: 9 } },
+      legend: { top: 0, textStyle: { color: "#b9bbc6", fontSize: 11 } },
+      tooltip: { trigger: "axis" as const, backgroundColor: "rgba(18,20,24,0.95)", borderColor: "#31363f", textStyle: { color: "#f5f5f7", fontSize: 11 }, valueFormatter: (v: unknown) => fmtPct(Number(v)) },
+      xAxis: { type: "category" as const, data: Array.from({ length: n }, (_, i) => `P${i + 1}`), axisLabel: { color: AXIS.color, fontSize: 10 } },
       yAxis: { type: "value" as const, axisLabel: { color: AXIS.color, formatter: (v: number) => `${Math.round(v * 100)}%` }, splitLine: { lineStyle: { color: AXIS.split } } },
       series: r.results.map((x, i) => ({ name: x.name, type: "bar" as const, data: x.positionDistribution, itemStyle: { color: PALETTE[i % 4] } })),
     };
@@ -149,7 +149,7 @@ export default function Strategy() {
   return (
     <div className="grid h-full grid-cols-1 gap-px bg-line lg:grid-cols-[380px_minmax(0,1fr)]">
       <Frame title={<>Scenario <KindBadge kind="simulated" /></>}>
-        <div className="space-y-3 p-3 text-[12px]">
+        <div className="space-y-3 p-3 text-[13px]">
           <div className="grid grid-cols-[90px_1fr] items-center gap-2">
             <span className="label">Race</span>
             <select value={race ?? ""} onChange={(e) => setRace(e.target.value)}>
@@ -171,9 +171,9 @@ export default function Strategy() {
             <input type="number" min={5} max={100} value={totalLaps} onChange={(e) => setTotalLaps(Number(e.target.value))} />
             <span className="label">Pace from</span>
             <div className="flex flex-wrap gap-2">
-              {practice.length === 0 && <span className="text-[11px] text-fg-3">no practice ingested</span>}
+              {practice.length === 0 && <span className="text-[12px] text-fg-3">no practice ingested</span>}
               {practice.map((p) => (
-                <label key={p.id} className="flex items-center gap-1 text-[11px]">
+                <label key={p.id} className="flex items-center gap-1 text-[12px]">
                   <input type="checkbox" checked={paceIds.includes(p.id)} onChange={(e) => setPaceIds(e.target.checked ? [...paceIds, p.id] : paceIds.filter((x) => x !== p.id))} />
                   {p.name.replace("Practice ", "FP")}
                 </label>
@@ -192,7 +192,7 @@ export default function Strategy() {
               <div key={si} className="mb-2 rounded border border-line bg-ink-0/50 p-2" style={{ borderLeft: `3px solid ${PALETTE[si % 4]}` }}>
                 <div className="mb-1 flex items-center gap-2">
                   <input type="text" className="flex-1" value={s.name} maxLength={40} onChange={(e) => setStrats(strats.map((x, i) => (i === si ? { ...x, name: e.target.value } : x)))} />
-                  <span className={`num text-[10px] ${lapsSum(s) === totalLaps ? "text-fg-3" : "text-lemon"}`} title="Last stint absorbs any mismatch">
+                  <span className={`num text-[11px] ${lapsSum(s) === totalLaps ? "text-fg-3" : "text-lemon"}`} title="Last stint absorbs any mismatch">
                     {lapsSum(s)}/{totalLaps}
                   </span>
                   <button className="text-fg-3 hover:text-bad" onClick={() => setStrats(strats.filter((_, i) => i !== si))} disabled={strats.length <= 1}>
@@ -230,18 +230,18 @@ export default function Strategy() {
               { label: "Track temp Δ", v: temp, set: setTemp, min: -15, max: 15, step: 1, fmt: (x: number) => `${x > 0 ? "+" : ""}${x} °C` },
             ].map((s) => (
               <div key={s.label} className="grid grid-cols-[100px_1fr_60px] items-center gap-2">
-                <span className="text-[11px] text-fg-2">{s.label}</span>
+                <span className="text-[12px] text-fg-2">{s.label}</span>
                 <input type="range" min={s.min} max={s.max} step={s.step} value={s.v} onChange={(e) => s.set(Number(e.target.value))} />
-                <span className="num text-right text-[11px]">{s.fmt(s.v)}</span>
+                <span className="num text-right text-[12px]">{s.fmt(s.v)}</span>
               </div>
             ))}
             <div className="grid grid-cols-[100px_1fr_60px] items-center gap-2">
-              <span className="text-[11px] text-fg-2">Pit loss</span>
+              <span className="text-[12px] text-fg-2">Pit loss</span>
               <input type="range" min={10} max={35} step={0.5} value={pitLoss ?? 20} onChange={(e) => setPitLoss(Number(e.target.value))} />
-              <span className="num text-right text-[11px]">{pitLoss === null ? "data" : `${pitLoss} s`}</span>
+              <span className="num text-right text-[12px]">{pitLoss === null ? "data" : `${pitLoss} s`}</span>
             </div>
             <div className="grid grid-cols-[100px_1fr_1fr] items-center gap-2">
-              <span className="text-[11px] text-fg-2">Iterations / seed</span>
+              <span className="text-[12px] text-fg-2">Iterations / seed</span>
               <input type="number" min={100} max={2000} step={100} value={iterations} onChange={(e) => setIterations(Number(e.target.value))} />
               <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value))} />
             </div>
@@ -256,16 +256,16 @@ export default function Strategy() {
         {sim.isError && <ErrorNote error={sim.error} />}
         {!sim.data && !sim.isError && <Empty>Configure strategies and run the simulation. Results are distributions, not certainties.</Empty>}
         {sim.data && (
-          <div className="space-y-3 p-3 text-[12px]">
+          <div className="space-y-3 p-3 text-[13px]">
             <div className={`rounded border p-2.5 ${sim.data.recommendation.distinguishable ? "border-lemon/40 bg-lemon/5" : "border-line-2 bg-ink-0/50"}`}>
               <div className="label mb-1">{sim.data.recommendation.distinguishable ? "Best under this objective" : "No clear separation"}</div>
               <div className="text-[14px] font-semibold">{sim.data.recommendation.name}</div>
               <div className="text-fg-2">{sim.data.recommendation.reason}</div>
-              <div className="mt-1 text-[10px] text-fg-3">Objective: {sim.data.objective}</div>
+              <div className="mt-1 text-[11px] text-fg-3">Objective: {sim.data.objective}</div>
             </div>
             <div className="h-56">{dist && <EChart option={dist} />}</div>
-            <table className="num w-full text-[11px]">
-              <thead className="text-left text-[9px] uppercase tracking-wider text-fg-3">
+            <table className="num w-full text-[12px]">
+              <thead className="text-left text-[10px] uppercase tracking-wider text-fg-3">
                 <tr>
                   <th>Strategy</th>
                   <th className="text-right">E[pos]</th>
@@ -308,7 +308,7 @@ export default function Strategy() {
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <div className="label mb-1">Sensitivity (Δ expected position)</div>
-                <table className="num w-full text-[11px]">
+                <table className="num w-full text-[12px]">
                   <tbody>
                     {sim.data.results[0]?.sensitivity.map((s, k) => (
                       <tr key={s.scenario} className="border-b border-line/40">
@@ -326,7 +326,7 @@ export default function Strategy() {
               <div>
                 <div className="label mb-1">Head-to-head (paired simulations)</div>
                 {sim.data.headToHead.map((h) => (
-                  <div key={`${h.a}-${h.b}`} className="num text-[11px] text-fg-2">
+                  <div key={`${h.a}-${h.b}`} className="num text-[12px] text-fg-2">
                     {h.a} ahead of {h.b}: {fmtPct(h.pAAheadOfB)}
                   </div>
                 ))}
@@ -334,7 +334,7 @@ export default function Strategy() {
                 <StintTimeline strategies={sim.data.results} total={sim.data.totalLaps} />
               </div>
             </div>
-            <ul className="list-disc space-y-0.5 pl-5 text-[10px] text-fg-3">
+            <ul className="list-disc space-y-0.5 pl-5 text-[11px] text-fg-3">
               {[...sim.data.notes, ...sim.data.assumptions].map((a) => (
                 <li key={a}>{a}</li>
               ))}

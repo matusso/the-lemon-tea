@@ -1,22 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink-0: #0b0c0e;
-  --color-ink-1: #121418;
-  --color-ink-2: #1a1d23;
-  --color-ink-3: #22262d;
-  --color-line: #262a31;
-  --color-line-2: #31363f;
-  --color-fg: #e7e9ec;
-  --color-fg-2: #9aa1ab;
-  --color-fg-3: #646b76;
-  --color-lemon: #e8d44d;
-  --color-teal: #3fb5c0;
-  --color-good: #4fc778;
-  --color-bad: #ff6b6b;
-  --color-purple: #b38cff;
+  /* Carbon surfaces, F1 red for interface accents, F1 timing colours for data. */
+  --color-ink-0: #0d0d13;
+  --color-ink-1: #15151e;
+  --color-ink-2: #1d1d28;
+  --color-ink-3: #282834;
+  --color-line: #2a2a37;
+  --color-line-2: #3a3a49;
+  --color-fg: #f5f5f7;
+  --color-fg-2: #b9bbc6;
+  --color-fg-3: #82858f;
+  --color-f1: #e10600;
+  --color-f1-hi: #ff1e00;
+  --color-lemon: #ffd12e;
+  --color-teal: #27c5e8;
+  --color-good: #00d26a;
+  --color-bad: #ff4b4b;
+  --color-purple: #b44cf0;
   --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Titillium Web", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 html,
@@ -30,7 +33,7 @@ body {
   background: var(--color-ink-0);
   color: var(--color-fg);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -38,8 +41,8 @@ body {
 .grid-bg {
   background-color: var(--color-ink-0);
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -49,7 +52,8 @@ body {
 }
 
 .label {
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-fg-3);
@@ -60,7 +64,7 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2e36;
+  background: #34343f;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-track {
@@ -73,11 +77,11 @@ body {
 }
 [data-separator]:hover,
 [data-separator][data-separator-state="drag"] {
-  background: var(--color-lemon);
+  background: var(--color-f1);
 }
 
 input[type="range"] {
-  accent-color: var(--color-lemon);
+  accent-color: var(--color-f1);
 }
 
 select,
@@ -89,20 +93,20 @@ input[type="password"] {
   border: 1px solid var(--color-line-2);
   border-radius: 4px;
   color: var(--color-fg);
-  padding: 3px 6px;
-  font-size: 12px;
+  padding: 4px 8px;
+  font-size: 13px;
 }
 select:focus,
 input:focus {
-  outline: 1px solid var(--color-lemon);
+  outline: 1px solid var(--color-f1);
 }
 
 .car-label {
   pointer-events: none;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
   background: rgba(11, 12, 14, 0.82);
   white-space: nowrap;

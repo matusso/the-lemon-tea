@@ -4,7 +4,7 @@ import { ApiError } from "../api";
 export function Frame({ title, right, children, className = "" }: { title: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
     <section className={`flex h-full min-h-0 flex-col bg-ink-1 ${className}`}>
-      <header className="flex h-8 shrink-0 items-center justify-between gap-2 border-b border-line px-3">
+      <header className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-line bg-ink-2/60 px-3">
         <div className="label flex items-center gap-2 !text-fg-2">{title}</div>
         <div className="flex items-center gap-2">{right}</div>
       </header>
@@ -25,19 +25,19 @@ const KIND_STYLE: Record<Kind, string> = {
 
 export function KindBadge({ kind, title }: { kind: Kind; title?: string }) {
   return (
-    <span title={title} className={`inline-flex h-4 items-center rounded-sm border px-1 text-[9px] font-semibold uppercase tracking-wider ${KIND_STYLE[kind]}`}>
+    <span title={title} className={`inline-flex h-4 items-center rounded-sm border px-1 text-[10px] font-semibold uppercase tracking-wider ${KIND_STYLE[kind]}`}>
       {kind}
     </span>
   );
 }
 
 export function Btn({ children, onClick, active, disabled, title, variant = "ghost" }: { children: ReactNode; onClick?: () => void; active?: boolean; disabled?: boolean; title?: string; variant?: "ghost" | "primary" }) {
-  const base = "inline-flex h-6 items-center gap-1 rounded px-2 text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+  const base = "inline-flex h-7 items-center gap-1 rounded px-2.5 text-[12px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
   const style =
     variant === "primary"
-      ? "bg-lemon text-ink-0 hover:brightness-110"
+      ? "bg-f1 text-white hover:bg-f1-hi"
       : active
-        ? "bg-lemon/15 text-lemon border border-lemon/40"
+        ? "bg-f1/15 text-fg border border-f1/60"
         : "border border-line-2 text-fg-2 hover:text-fg hover:border-fg-3";
   return (
     <button type="button" title={title} disabled={disabled} onClick={onClick} className={`${base} ${style}`}>
@@ -47,12 +47,12 @@ export function Btn({ children, onClick, active, disabled, title, variant = "gho
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <div className="flex h-full min-h-24 items-center justify-center p-4 text-center text-[12px] text-fg-3">{children}</div>;
+  return <div className="flex h-full min-h-24 items-center justify-center p-4 text-center text-[13px] text-fg-3">{children}</div>;
 }
 
 export function ErrorNote({ error }: { error: unknown }) {
   const msg = error instanceof ApiError ? `${error.message}${error.status === 401 || error.status === 404 ? " — sign in if this data is private." : ""}` : String((error as Error)?.message ?? error);
-  return <div className="m-3 rounded border border-bad/40 bg-bad/10 p-2 text-[12px] text-bad">{msg}</div>;
+  return <div className="m-3 rounded border border-bad/40 bg-bad/10 p-2 text-[13px] text-bad">{msg}</div>;
 }
 
 export function Loading({ what = "Loading" }: { what?: string }) {
@@ -85,7 +85,7 @@ export function ProbBar({ p, color = "#e8d44d" }: { p: number; color?: string })
       <div className="h-1.5 w-14 overflow-hidden rounded-full bg-ink-3">
         <div className="h-full rounded-full" style={{ width: `${Math.min(100, p * 100)}%`, background: color }} />
       </div>
-      <span className="num w-10 text-right text-[11px] text-fg-2">{fmtPct(p)}</span>
+      <span className="num w-10 text-right text-[12px] text-fg-2">{fmtPct(p)}</span>
     </div>
   );
 }
@@ -103,10 +103,10 @@ export function Tyre({ compound, age }: { compound: string | null; age?: number 
   const c = COMPOUND_COLOR[compound] ?? "#888";
   return (
     <span className="inline-flex items-center gap-1">
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border-2 text-[8px] font-bold" style={{ borderColor: c, color: c }}>
+      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border-2 text-[9px] font-bold" style={{ borderColor: c, color: c }}>
         {compound[0]}
       </span>
-      {age !== undefined && <span className="num text-[11px] text-fg-2">{age ?? dash}</span>}
+      {age !== undefined && <span className="num text-[12px] text-fg-2">{age ?? dash}</span>}
     </span>
   );
 }

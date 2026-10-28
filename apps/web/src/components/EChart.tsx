@@ -3,7 +3,7 @@ import * as echarts from "echarts";
 
 export type EOption = echarts.EChartsOption;
 
-export const AXIS = { color: "#646b76", line: "#262a31", split: "rgba(255,255,255,0.04)" };
+export const AXIS = { color: "#82858f", line: "#2a2a37", split: "rgba(255,255,255,0.05)" };
 
 /**
  * Thin ECharts wrapper: one instance per element, option updates merged (notMerge optional),
@@ -48,4 +48,4 @@ export function EChart({
   return <div ref={el} className={className} style={{ width: "100%", height: "100%", ...style }} />;
 }
 
-export const baseTextStyle = { color: "#9aa1ab", fontFamily: "JetBrains Mono, ui-monospace, monospace", fontSize: 10 };
+export const baseTextStyle = { color: "#b9bbc6", fontFamily: "JetBrains Mono, ui-monospace, monospace", fontSize: 11 };

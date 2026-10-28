@@ -24,10 +24,10 @@ function Brand() {
   return (
     <div className="flex items-center gap-2 pr-3">
       <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden>
-        <circle cx="16" cy="16" r="10" fill="none" stroke="#e8d44d" strokeWidth="2.5" />
-        <path d="M16 6v20M6 16h20M9 9l14 14M23 9 9 23" stroke="#e8d44d" strokeWidth="1.2" opacity=".6" />
+        <circle cx="16" cy="16" r="10" fill="none" stroke="#e10600" strokeWidth="2.5" />
+        <path d="M16 6v20M6 16h20M9 9l14 14M23 9 9 23" stroke="#ffd12e" strokeWidth="1.2" opacity=".6" />
       </svg>
-      <span className="text-[12px] font-bold tracking-[0.22em] text-fg">THE LEMON TEA</span>
+      <span className="text-[13px] font-bold tracking-[0.22em] text-fg">THE LEMON TEA</span>
     </div>
   );
 }
@@ -74,7 +74,7 @@ function SessionPicker() {
           </option>
         ))}
       </select>
-      {seasons.data?.length === 0 && <span className="text-[11px] text-fg-3">No sessions visible — sign in or ingest data.</span>}
+      {seasons.data?.length === 0 && <span className="text-[12px] text-fg-3">No sessions visible — sign in or ingest data.</span>}
     </div>
   );
 }
@@ -95,7 +95,7 @@ function Account() {
           F1 account
         </Btn>
         {open && <F1AccountPanel onClose={() => setOpen(false)} />}
-        <span className="text-[11px] text-fg-2">{me.data.user?.email}</span>
+        <span className="text-[12px] text-fg-2">{me.data.user?.email}</span>
         <Btn
           onClick={async () => {
             await api("/api/auth/logout", { method: "POST" });
@@ -131,8 +131,8 @@ function Account() {
           <input className="mb-2 w-full" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <div className="label mb-1">Password</div>
           <input className="mb-3 w-full" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          {err && <div className="mb-2 text-[11px] text-bad">{err}</div>}
-          <button className="h-7 w-full rounded bg-lemon text-[12px] font-semibold text-ink-0" type="submit">
+          {err && <div className="mb-2 text-[12px] text-bad">{err}</div>}
+          <button className="h-8 w-full rounded bg-f1 text-[13px] font-semibold text-white hover:bg-f1-hi" type="submit">
             Sign in
           </button>
         </form>
@@ -145,7 +145,7 @@ function Footer() {
   const sessionId = useUi((s) => s.sessionId);
   const info = useInfo(sessionId);
   return (
-    <footer className="flex h-6 shrink-0 items-center justify-between gap-4 border-t border-line bg-ink-1 px-3 text-[10px] text-fg-3">
+    <footer className="flex h-6 shrink-0 items-center justify-between gap-4 border-t border-line bg-ink-1 px-3 text-[11px] text-fg-3">
       <span className="truncate">{info.data?.attribution ?? "Select a session"}</span>
       <span className="shrink-0">Independent open-source project · not affiliated with or endorsed by Formula 1</span>
     </footer>
@@ -170,7 +170,7 @@ export function App() {
 
   return (
     <div className="grid-bg flex h-full flex-col">
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b border-line bg-ink-1 px-3">
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b-2 border-f1 bg-ink-1 px-3">
         <Brand />
         <nav className="flex items-center gap-0.5 overflow-x-auto">
           {MODES.map((m, i) => (
@@ -178,7 +178,7 @@ export function App() {
               key={m.id}
               title={`Alt+${i + 1}`}
               onClick={() => set({ mode: m.id })}
-              className={`h-11 whitespace-nowrap border-b-2 px-3 text-[11px] font-medium tracking-wide transition-colors ${mode === m.id ? "border-lemon text-fg" : "border-transparent text-fg-3 hover:text-fg-2"}`}
+              className={`h-12 whitespace-nowrap border-b-2 px-3 text-[12px] font-medium tracking-wide transition-colors ${mode === m.id ? "border-f1 bg-f1/10 text-fg" : "border-transparent text-fg-3 hover:text-fg-2"}`}
             >
               <span className="mr-1.5 text-fg-3">{m.key}</span>
               {m.label}

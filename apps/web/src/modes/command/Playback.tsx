@@ -9,9 +9,9 @@ const KIND_COLOR: Partial<Record<TimelineEventKind, string>> = {
   vsc: "#ffb020",
   red_flag: "#ff6b6b",
   pit_stop: "#3fb5c0",
-  team_radio: "#9aa1ab",
+  team_radio: "#b9bbc6",
   start: "#4fc778",
-  chequered: "#e7e9ec",
+  chequered: "#f5f5f7",
   retirement: "#ff6b6b",
   penalty: "#b38cff",
   investigation: "#b38cff",
@@ -52,9 +52,9 @@ export function Playback({ bundle }: { bundle: TimingBundle }) {
             </Btn>
           ))}
         </div>
-        <span className="num ml-3 text-[13px] text-fg">{fmtClock(t)}</span>
-        <span className="num text-[10px] text-fg-3">{new Date(bundle.epochMs + t).toISOString().slice(11, 19)} UTC</span>
-        <span className="ml-auto rounded border border-line-2 px-2 py-0.5 text-[10px] text-fg-2" title="Source freshness">
+        <span className="num ml-3 text-[14px] text-fg">{fmtClock(t)}</span>
+        <span className="num text-[11px] text-fg-3">{new Date(bundle.epochMs + t).toISOString().slice(11, 19)} UTC</span>
+        <span className="ml-auto rounded border border-line-2 px-2 py-0.5 text-[11px] text-fg-2" title="Source freshness">
           Historical replay · source latency n/a
         </span>
       </div>
@@ -66,7 +66,7 @@ export function Playback({ bundle }: { bundle: TimingBundle }) {
             title={`${fmtClock(e.tMs)} · ${e.label}${e.sourceText ? ` — ${e.sourceText}` : ""}`}
             onClick={() => clock.seek(e.tMs)}
             className="absolute top-1 h-3 w-[3px] -translate-x-1/2 rounded-sm hover:scale-150"
-            style={{ left: pct(e.tMs), background: KIND_COLOR[e.kind] ?? "#646b76" }}
+            style={{ left: pct(e.tMs), background: KIND_COLOR[e.kind] ?? "#82858f" }}
           />
         ))}
         <input
@@ -81,13 +81,13 @@ export function Playback({ bundle }: { bundle: TimingBundle }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <table className="w-full text-[11px]">
+        <table className="w-full text-[12px]">
           <tbody>
             {recent.map((e, i) => (
               <tr key={i} className="cursor-pointer border-b border-line/50 hover:bg-ink-3" onClick={() => clock.seek(e.tMs)}>
                 <td className="num w-16 py-0.5 text-fg-3">{fmtClock(e.tMs)}</td>
                 <td className="w-24">
-                  <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: KIND_COLOR[e.kind] ?? "#646b76" }} />
+                  <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: KIND_COLOR[e.kind] ?? "#82858f" }} />
                   {e.kind.replaceAll("_", " ")}
                 </td>
                 <td className="truncate text-fg-2">
