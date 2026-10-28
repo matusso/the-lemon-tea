@@ -10,6 +10,7 @@ import {
   DegradationInput,
   HTTP_STATUS,
   IngestInput,
+  IngestWeekendInput,
   LemonTeaError,
   PracticeInput,
   PredictQualifyingInput,
@@ -310,6 +311,12 @@ export function createApp(d: AppDeps) {
     const q = await body(c, IngestInput);
     const a = auth(c);
     return c.json(await s.jobs.create(a, { kind: "ingest_session", input: q, idempotencyKey: `ingest:${q.sessionId}:${q.visibility}:${q.channels.join(",")}:${new Date().toISOString().slice(0, 13)}` }), 202);
+  });
+  app.post("/api/ingest/weekend", async (c) => {
+    const q = await body(c, IngestWeekendInput);
+    const a = auth(c);
+    const key = `ingest_weekend:${q.source}:${q.year}:${q.meetingKey}:${q.visibility}:${q.channels.join(",")}:${new Date().toISOString().slice(0, 13)}`;
+    return c.json(await s.jobs.create(a, { kind: "ingest_weekend", input: q, idempotencyKey: key }), 202);
   });
 
   // User telemetry imports: always private to the importing tenant.

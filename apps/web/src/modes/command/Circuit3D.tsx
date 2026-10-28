@@ -14,7 +14,7 @@ type Geo = CircuitResponse["geometry"];
 
 const LEMON = new THREE.Color("#e8d44d");
 const TEAL = new THREE.Color("#3fb5c0");
-const BASE = new THREE.Color("#3a3f48");
+const BASE = new THREE.Color("#5a5b6b");
 
 /** Source (origin-shifted) metres → scene: x→X, elevation→Y, y→-Z. */
 function toScene(x: number, y: number, z = 0): THREE.Vector3 {
@@ -104,7 +104,7 @@ function Track({ geo, cmp, onPick }: { geo: Geo; cmp: CompareResponse | undefine
         <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
       </mesh>
       <lineSegments geometry={edge}>
-        <lineBasicMaterial color="#5b616c" transparent opacity={0.35} />
+        <lineBasicMaterial color="#ffffff" transparent opacity={0.45} />
       </lineSegments>
     </group>
   );
@@ -127,7 +127,7 @@ function Markers({ geo }: { geo: Geo }) {
         <group key={i}>
           <mesh position={toScene(t.p.x, t.p.y, 0.5)}>
             <cylinderGeometry args={[1.6, 1.6, 1, 12]} />
-            <meshBasicMaterial color="#9aa1ab" />
+            <meshBasicMaterial color="#b9bbc6" />
           </mesh>
           <Html position={toScene(t.p.x, t.p.y, 6)} center>
             <div className="car-label !transform-none text-fg-2">S{i + 1}|S{i + 2}</div>
@@ -138,7 +138,7 @@ function Markers({ geo }: { geo: Geo }) {
         <Html key={c.number} position={toScene(c.x, c.y, 10)} center zIndexRange={[10, 0]}>
           <button
             onClick={() => set({ focusCorner: c.number, camera: "corner" })}
-            className="rounded border border-line-2 bg-ink-1/85 px-1 font-mono text-[10px] text-fg-2 hover:border-lemon hover:text-lemon"
+            className="rounded border border-line-2 bg-ink-1/85 px-1 font-mono text-[11px] text-fg-2 hover:border-lemon hover:text-lemon"
             title={`Detected corner ${c.label} at ${c.distance.toFixed(0)} m (not an official turn number)`}
           >
             {c.label}
@@ -242,7 +242,8 @@ function Cars({ geo, bundle, sessionId, origin }: { geo: Geo; bundle: TimingBund
 
 function CameraRig({ geo }: { geo: Geo }) {
   const { camera: mode, focusCorner } = useUi();
-  const cam = useThree((s) => s.camera);
+  const cam = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height));
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
   const bounds = useMemo(() => {
     const b = new THREE.Box3();
@@ -252,24 +253,28 @@ function CameraRig({ geo }: { geo: Geo }) {
 
   useEffect(() => {
     const center = bounds.getCenter(new THREE.Vector3());
-    const size = bounds.getSize(new THREE.Vector3());
-    const r = Math.max(size.x, size.z);
+    // Fit the whole circuit: distance from the bounding-sphere radius and the narrower of the
+    // vertical and horizontal fields of view (a wide, short panel is limited vertically).
+    const radius = bounds.getBoundingSphere(new THREE.Sphere()).radius;
+    const vfov = THREE.MathUtils.degToRad(cam.fov);
+    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
+    const fit = (radius / Math.sin(Math.min(vfov, hfov) / 2)) * 1.02;
     let pos: THREE.Vector3;
     let target = center;
-    if (mode === "top") pos = center.clone().add(new THREE.Vector3(0, r * 1.45, 0.01));
+    if (mode === "top") pos = center.clone().add(new THREE.Vector3(0, fit, 0.01));
     else if (mode === "corner" && focusCorner !== null) {
       const c = geo.corners.find((k) => k.number === focusCorner);
       target = c ? toScene(c.x, c.y, 0) : center;
       pos = target.clone().add(new THREE.Vector3(180, 220, 180));
     } else if (mode === "follow") pos = center.clone().add(new THREE.Vector3(0, 320, 320));
-    else pos = center.clone().add(new THREE.Vector3(r * 0.55, r * 0.95, r * 0.85));
+    else pos = center.clone().add(new THREE.Vector3(0.45, 0.8, 0.75).normalize().multiplyScalar(fit));
     cam.position.copy(pos);
     cam.lookAt(target);
     if (controls) {
       controls.target.copy(target);
       controls.update();
     }
-  }, [mode, focusCorner, bounds, cam, controls, geo]);
+  }, [mode, focusCorner, bounds, cam, controls, geo, aspect]);
   return null;
 }
 
@@ -283,11 +288,11 @@ export function Circuit3D({ circuit, bundle, sessionId, cmp, active = true }: { 
   };
   return (
     <Canvas frameloop={active ? "always" : "never"} camera={{ fov: 40, near: 5, far: 40000, position: [0, 2000, 2000] }} dpr={[1, 2]} gl={{ antialias: true }} onPointerMissed={() => undefined}>
-      <color attach="background" args={["#0b0c0e"]} />
-      <fog attach="fog" args={["#0b0c0e", 4000, 14000]} />
+      <color attach="background" args={["#0d0d13"]} />
+      <fog attach="fog" args={["#0d0d13", 8000, 20000]} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[500, 1500, 300]} intensity={1.2} />
-      <gridHelper args={[12000, 120, "#1d2027", "#15171c"]} position={[0, -1, 0]} />
+      <gridHelper args={[12000, 120, "#24242f", "#191921"]} position={[0, -1, 0]} />
       <Track geo={geo} cmp={cmp} onPick={onPick} />
       <Markers geo={geo} />
       <Cursor geo={geo} cmp={cmp} />

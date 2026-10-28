@@ -1,6 +1,7 @@
 import {
   CreateJobInput,
   IngestInput,
+  IngestWeekendInput,
   LemonTeaError,
   PredictQualifyingInput,
   PredictRaceResultInput,
@@ -18,6 +19,7 @@ const JOB_SCOPES: Record<string, Scope> = {
   predict_race_result: "simulations:execute",
   predict_qualifying: "predictions:read",
   ingest_session: "ingest:write",
+  ingest_weekend: "ingest:write",
 };
 
 /** Per-tenant concurrency quota for queued/running jobs. */
@@ -96,7 +98,7 @@ export class JobService {
 }
 
 function validateJobInput(kind: string, input: unknown) {
-  const schema = { simulate_strategy: SimulateStrategyInput, predict_race_result: PredictRaceResultInput, predict_qualifying: PredictQualifyingInput, ingest_session: IngestInput }[kind];
+  const schema = { simulate_strategy: SimulateStrategyInput, predict_race_result: PredictRaceResultInput, predict_qualifying: PredictQualifyingInput, ingest_session: IngestInput, ingest_weekend: IngestWeekendInput }[kind];
   if (!schema) return;
   const r = schema.safeParse(input);
   if (!r.success) throw new LemonTeaError("invalid_input", "Invalid job input", { issues: r.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) });
@@ -123,6 +125,10 @@ export async function runJob(
     case "ingest_session": {
       if (!services.ingestion) throw new LemonTeaError("internal", "Ingestion is not configured in this worker");
       return services.ingestion.ingest(ownerCtx, IngestInput.parse(job.input), (p) => void progress(p.total ? p.done / p.total : 0), cancelled);
+    }
+    case "ingest_weekend": {
+      if (!services.ingestion) throw new LemonTeaError("internal", "Ingestion is not configured in this worker");
+      return services.ingestion.ingestWeekend(ownerCtx, IngestWeekendInput.parse(job.input), (p) => void progress(p.total ? p.done / p.total : 0), cancelled);
     }
     default:
       throw new LemonTeaError("invalid_input", `Unsupported job kind ${job.kind}`);

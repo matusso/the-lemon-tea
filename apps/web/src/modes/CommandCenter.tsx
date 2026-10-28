@@ -103,7 +103,7 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
         <Btn onClick={() => toggle(towerRef)}>Tower</Btn>
         <Btn onClick={() => toggle(intelRef)}>Intel</Btn>
         <Btn onClick={() => toggle(bottomRef)}>Timeline</Btn>
-        <span className="ml-auto text-[10px] text-fg-3">
+        <span className="ml-auto text-[11px] text-fg-3">
           {driverA === null ? "Click a driver for A, Ctrl/Cmd-click for B" : driverB === null ? "Ctrl/Cmd-click a second driver to compare" : "Comparing fastest laps of A and B"}
         </span>
       </div>
@@ -136,7 +136,7 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                   {circuit.isError && <ErrorNote error={circuit.error} />}
                   {circuit.data && <Circuit3D circuit={circuit.data} bundle={b} sessionId={sessionId} cmp={cmp.data} active={active} />}
                   {circuit.data && (
-                    <div className="pointer-events-none absolute left-2 top-2 space-y-1 text-[10px]">
+                    <div className="pointer-events-none absolute left-2 top-2 space-y-1 text-[11px]">
                       <div className="pointer-events-auto rounded border border-line-2 bg-ink-1/90 px-2 py-1 text-fg-2" title={JSON.stringify(circuit.data.provenance, null, 1)}>
                         Driven-line estimate · ±{circuit.data.accuracyM?.toFixed(1) ?? "?"} m · {circuit.data.confidence} · {circuit.data.lengthM.toFixed(0)} m
                       </div>
@@ -161,13 +161,13 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                         </Btn>
                       )}
                       {overlay === "delta" && cmp.data && (
-                        <span className="ml-1 text-[10px]">
+                        <span className="ml-1 text-[11px]">
                           <span className="text-lemon">■ {cmp.data.a.driverCode} gaining</span> <span className="text-teal">■ {cmp.data.b.driverCode} gaining</span>
                         </span>
                       )}
-                      {cmp.isLoading && <span className="text-[10px] text-fg-3">comparing…</span>}
-                      {cmp.isError && <span className="text-[10px] text-bad">{(cmp.error as Error).message}</span>}
-                      <span className="text-[10px] text-fg-3">· click track to set cursor</span>
+                      {cmp.isLoading && <span className="text-[11px] text-fg-3">comparing…</span>}
+                      {cmp.isError && <span className="text-[11px] text-bad">{(cmp.error as Error).message}</span>}
+                      <span className="text-[11px] text-fg-3">· click track to set cursor</span>
                     </div>
                   )}
                 </div>

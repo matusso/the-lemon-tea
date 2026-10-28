@@ -11,6 +11,11 @@ export interface IngestProgress {
   total: number;
 }
 
+export interface WeekendIngestResult {
+  meetingKey: string;
+  sessions: ({ sessionId: string; name: string; type: string } & ({ ok: true; result: IngestResult } | { ok: false; error: string }))[];
+}
+
 export interface IngestResult {
   sessionId: string;
   owner: "public" | "private";
@@ -110,6 +115,40 @@ export class IngestionService {
     const complete = q.channels.length === 3 && quality.driversWithoutCarData.length === 0;
     await this.store.markIngested(uid, complete ? "complete" : "partial", q.channels);
     return { sessionId: q.sessionId, owner: owner ? "private" : "public", drivers: bundle.drivers.length, laps: bundle.laps.length, carSamples: car, positionSamples: pos, quality };
+  }
+
+  /**
+   * Ingests every session of one meeting that has already started (practice → qualifying → race,
+   * in calendar order). A session that fails (e.g. cancelled, nothing published) is reported and
+   * the rest continue; the job only fails when no session could be loaded.
+   */
+  async ingestWeekend(
+    ctx: AuthContext,
+    q: { source: string; year: number; meetingKey: string; channels: ("timing" | "car_data" | "location")[]; visibility: "public" | "private" },
+    onProgress: (p: IngestProgress) => void = () => {},
+    shouldCancel: () => Promise<boolean> | boolean = () => false,
+  ): Promise<WeekendIngestResult> {
+    const sessions = (await this.discover(ctx, q.source, q.year))
+      .filter((s) => s.meetingKey === q.meetingKey && Date.parse(s.dateStart) < Date.now())
+      .sort((a, b) => a.dateStart.localeCompare(b.dateStart));
+    if (!sessions.length) throw new LemonTeaError("not_found", `No started sessions for meeting ${q.meetingKey} in ${q.year}`);
+    const out: WeekendIngestResult = { meetingKey: q.meetingKey, sessions: [] };
+    for (const [i, s] of sessions.entries()) {
+      if (await shouldCancel()) throw new LemonTeaError("conflict", "Ingestion cancelled");
+      const sessionId = `${q.source}:${s.sessionKey}`;
+      const base = { sessionId, name: s.name, type: s.type };
+      try {
+        const result = await this.ingest(ctx, { sessionId, channels: q.channels, visibility: q.visibility }, (p) =>
+          onProgress({ stage: `${s.name}: ${p.stage}`, done: i * 1000 + Math.round((p.total ? p.done / p.total : 0) * 1000), total: sessions.length * 1000 }), shouldCancel);
+        out.sessions.push({ ...base, ok: true, result });
+      } catch (e) {
+        if (e instanceof LemonTeaError && (e.code === "conflict" || e.code === "forbidden" || e.code === "unauthorized")) throw e;
+        out.sessions.push({ ...base, ok: false, error: (e as Error).message });
+      }
+      onProgress({ stage: s.name, done: (i + 1) * 1000, total: sessions.length * 1000 });
+    }
+    if (!out.sessions.some((s) => s.ok)) throw new LemonTeaError("data_unavailable", `No session of meeting ${q.meetingKey} could be loaded: ${out.sessions.map((s) => `${s.name}: ${s.ok ? "ok" : s.error}`).join("; ")}`);
+    return out;
   }
 
   async discover(ctx: AuthContext, source: string, year: number) {

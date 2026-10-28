@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/titillium-web": "^5.3.0",
     "@lemon-tea/circuit-engine": "*",
     "@lemon-tea/shared-types": "*",
     "@lemon-tea/synchronization": "*",

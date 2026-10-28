@@ -22,7 +22,7 @@ function Stat({ label, value, unit }: { label: string; value: string; unit?: str
       <div className="label">{label}</div>
       <div className="num text-[14px] text-fg">
         {value}
-        {unit && value !== dash && <span className="ml-0.5 text-[10px] text-fg-3">{unit}</span>}
+        {unit && value !== dash && <span className="ml-0.5 text-[11px] text-fg-3">{unit}</span>}
       </div>
     </div>
   );
@@ -38,7 +38,7 @@ export function CursorExplanation({ cmp }: { cmp: CompareResponse | undefined })
   const finding = cmp.findings.find((f) => f.scope === scope);
   const delta = corner?.delta_change_seconds ?? straight?.deltaChange ?? null;
   return (
-    <div className="rounded border border-lemon/30 bg-lemon/5 p-2 text-[11px]">
+    <div className="rounded border border-lemon/30 bg-lemon/5 p-2 text-[12px]">
       <div className="mb-1 flex items-center justify-between">
         <span className="label !text-lemon">
           {cmp.a.driverCode} vs {cmp.b.driverCode} @ {cursor.toFixed(0)} m · {scope ?? "—"}
@@ -72,7 +72,7 @@ export function RaceIntel({ bundle, cmp }: { bundle: TimingBundle; cmp: CompareR
     <Frame title="Race intelligence">
       <div className="space-y-3 p-2.5">
         <div className={`flex items-center justify-between rounded border px-2 py-1.5 ${STATUS_STYLE[status.status]}`}>
-          <span className="text-[12px] font-semibold uppercase tracking-wider">{STATUS_LABEL[status.status]}</span>
+          <span className="text-[13px] font-semibold uppercase tracking-wider">{STATUS_LABEL[status.status]}</span>
           <KindBadge kind="measured" title="From race-control messages" />
         </div>
 
@@ -89,7 +89,7 @@ export function RaceIntel({ bundle, cmp }: { bundle: TimingBundle; cmp: CompareR
             <Stat label="Dir" value={fmtNum(wx?.windDirection, 0)} unit="°" />
             <Stat label="Rain" value={wx?.rainfall === null || wx?.rainfall === undefined ? dash : wx.rainfall ? "Yes" : "No"} />
           </div>
-          <div className="mt-1 text-[10px] text-fg-3">Grip / track condition: unavailable — no measured channel; not estimated here.</div>
+          <div className="mt-1 text-[11px] text-fg-3">Grip / track condition: unavailable — no measured channel; not estimated here.</div>
         </div>
 
         <CursorExplanation cmp={cmp} />
@@ -100,10 +100,10 @@ export function RaceIntel({ bundle, cmp }: { bundle: TimingBundle; cmp: CompareR
               <span className="h-4 w-1 rounded" style={{ background: teamColor(drv.teamColour) }} />
               <span className="font-bold">{drv.code}</span>
               <span className="text-fg-2">{drv.fullName}</span>
-              <span className="ml-auto text-[10px] text-fg-3">{drv.teamName}</span>
+              <span className="ml-auto text-[11px] text-fg-3">{drv.teamName}</span>
             </div>
             {row && (
-              <div className="num grid grid-cols-3 gap-1.5 text-[11px]">
+              <div className="num grid grid-cols-3 gap-1.5 text-[12px]">
                 <Stat label="Pos" value={String(row.position ?? dash)} />
                 <Stat label="Lap" value={String(row.currentLap || dash)} />
                 <Stat label="Best" value={fmtLap(row.bestLap)} />
@@ -122,12 +122,12 @@ export function RaceIntel({ bundle, cmp }: { bundle: TimingBundle; cmp: CompareR
         <div>
           <div className="mb-1 flex items-center justify-between">
             <span className="label">Race control</span>
-            <span className="text-[9px] text-fg-3">source text · untrusted</span>
+            <span className="text-[10px] text-fg-3">source text · untrusted</span>
           </div>
           <ul className="space-y-1">
-            {rc.length === 0 && <li className="text-[11px] text-fg-3">No messages yet.</li>}
+            {rc.length === 0 && <li className="text-[12px] text-fg-3">No messages yet.</li>}
             {rc.map((e, i) => (
-              <li key={`${e.date}-${i}`} className="rounded border border-line/70 bg-ink-0/40 px-2 py-1 text-[11px]">
+              <li key={`${e.date}-${i}`} className="rounded border border-line/70 bg-ink-0/40 px-2 py-1 text-[12px]">
                 <span className="num mr-2 text-fg-3">{new Date(e.date).toISOString().slice(11, 19)}</span>
                 {e.flag && <span className="mr-1 text-lemon">{e.flag}</span>}
                 <span className="text-fg-2">{e.message}</span>
@@ -139,9 +139,9 @@ export function RaceIntel({ bundle, cmp }: { bundle: TimingBundle; cmp: CompareR
         <div>
           <div className="label mb-1">Pit stops</div>
           {pits.length === 0 ? (
-            <div className="text-[11px] text-fg-3">None yet.</div>
+            <div className="text-[12px] text-fg-3">None yet.</div>
           ) : (
-            <table className="num w-full text-[11px]">
+            <table className="num w-full text-[12px]">
               <tbody>
                 {pits.map((p) => (
                   <tr key={`${p.driverNumber}-${p.lapNumber}`} className="border-b border-line/50">
@@ -155,7 +155,7 @@ export function RaceIntel({ bundle, cmp }: { bundle: TimingBundle; cmp: CompareR
             </table>
           )}
         </div>
-        <div className="text-[10px] text-fg-3">Pit-stop and strategy predictions: run them in Strategy Simulator (simulated, with uncertainty).</div>
+        <div className="text-[11px] text-fg-3">Pit-stop and strategy predictions: run them in Strategy Simulator (simulated, with uncertainty).</div>
       </div>
     </Frame>
   );
