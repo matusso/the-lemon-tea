@@ -1,7 +1,47 @@
 import type { DistanceTrace } from "@lemon-tea/shared-types";
 import { detectCorners, grid, indexAt, interpLinear, median, movingAverage, round } from "@lemon-tea/telemetry-core";
 
-export const CIRCUIT_ENGINE_VERSION = "circuit-geometry-v2";
+export const CIRCUIT_ENGINE_VERSION = "circuit-geometry-v3";
+
+export interface LapGeometryCheck {
+  ok: boolean;
+  reason: string | null;
+  /** Path length of the measured x/y samples (m). */
+  pathLengthM: number;
+  /** Distance between the first and last measured position of the lap (m). */
+  closureM: number;
+}
+
+/**
+ * Whether one lap's measured positions can be trusted to describe the circuit.
+ *
+ * Live-timing feeds regularly carry stretches where car or position data is missing or frozen
+ * (the car "parks" in the stream while the lap counter keeps running). Such a lap still has a
+ * valid lap time, so the fastest-lap choice alone happily picks it, and the derived line becomes
+ * a fragment of the circuit. A usable lap must:
+ *  - have a plausible speed-integrated length (mean speed 80–330 km/h over the lap time)
+ *  - have x/y samples whose path length agrees with that length within 12 %
+ *  - close on itself: start and end positions within 0.8 % of the lap length (min 40 m)
+ *  - have car data at ≥ 2 samples/s over the lap (the feed's nominal rate is ~4 Hz)
+ */
+export function checkLapGeometry(trace: DistanceTrace, integratedLength: number): LapGeometryCheck {
+  const bad = (reason: string, pathLengthM = 0, closureM = Number.POSITIVE_INFINITY): LapGeometryCheck => ({ ok: false, reason, pathLengthM, closureM });
+  const meanKmh = (integratedLength / Math.max(1, trace.lapTime ?? 0)) * 3.6;
+  if (!Number.isFinite(integratedLength) || meanKmh < 80 || meanKmh > 330) return bad(`implausible mean speed ${meanKmh.toFixed(0)} km/h`);
+  const xs = trace.x;
+  const ys = trace.y;
+  if (!xs || !ys || xs.length < 10) return bad("no position samples");
+  if (!xs.every(Number.isFinite) || !ys.every(Number.isFinite)) return bad("position samples have gaps");
+  let path = 0;
+  for (let i = 1; i < xs.length; i++) path += Math.hypot(xs[i]! - xs[i - 1]!, ys[i]! - ys[i - 1]!);
+  const closure = Math.hypot(xs[0]! - xs[xs.length - 1]!, ys[0]! - ys[ys.length - 1]!);
+  if (Math.abs(path / integratedLength - 1) > 0.12) return bad(`position path ${path.toFixed(0)} m vs ${integratedLength.toFixed(0)} m from speed`, path, closure);
+  if (closure > Math.max(40, 0.008 * integratedLength)) return bad(`lap does not close (${closure.toFixed(0)} m)`, path, closure);
+  // Car data arrives at ~4 Hz; well under 2 Hz means the speed trace (and so distance) is mostly bridged gaps.
+  const hz = trace.sourceSampleCount / Math.max(1, trace.lapTime ?? 0);
+  if (hz < 2) return bad(`sparse car data (${hz.toFixed(1)} samples/s)`, path, closure);
+  return { ok: true, reason: null, pathLengthM: path, closureM: closure };
+}
 
 export interface DerivedGeometry {
   x: number[];
@@ -120,6 +160,70 @@ export function deriveGeometry(
       kind: "estimated",
     },
   };
+}
+
+/**
+ * Closed laps found in one car's position trace alone, without lap timing.
+ *
+ * Used when the source's lap timing cannot be aligned with its samples. A lap is the span
+ * between two consecutive passes of the car close to an anchor point (default: the first point
+ * where the car is running), as long as the path between them is circuit-length, contiguous
+ * (no sample gap above `maxGapMs`) and driven at racing speed. Passes are local minima of the
+ * distance to the anchor below `passRadiusM`.
+ */
+export function findPositionLoops(
+  pos: { t: readonly number[]; x: readonly number[]; y: readonly number[] },
+  o: { anchor?: { x: number; y: number } | null; minLengthM?: number; maxLengthM?: number; maxGapMs?: number; passRadiusM?: number; minMeanKmh?: number; max?: number } = {},
+): { startMs: number; endMs: number; pathLengthM: number }[] {
+  const minLen = o.minLengthM ?? 2500;
+  const maxLen = o.maxLengthM ?? 8000;
+  const maxGap = o.maxGapMs ?? 2000;
+  const radius = o.passRadiusM ?? 25;
+  const minMean = o.minMeanKmh ?? 120;
+  const max = o.max ?? 3;
+  const n = pos.t.length;
+  if (n < 50) return [];
+  // cumulative path; NaN across gaps so a loop can never bridge one
+  const cum = new Array<number>(n).fill(0);
+  const seg = new Array<number>(n).fill(0);
+  for (let i = 1; i < n; i++) {
+    const gap = pos.t[i]! - pos.t[i - 1]! > maxGap;
+    seg[i] = gap ? seg[i - 1]! + 1 : seg[i - 1]!;
+    cum[i] = cum[i - 1]! + (gap ? 0 : Math.hypot(pos.x[i]! - pos.x[i - 1]!, pos.y[i]! - pos.y[i - 1]!));
+  }
+  let anchor = o.anchor ?? null;
+  if (!anchor) {
+    // first sample that starts a stretch of fast running (≥ 80 m, i.e. 144 km/h, in the next 2 s)
+    for (let i = 0, j = 0; i < n && !anchor; i++) {
+      while (j < n - 1 && pos.t[j]! - pos.t[i]! < 2000) j++;
+      if (seg[j] === seg[i] && cum[j]! - cum[i]! > 80) anchor = { x: pos.x[i]!, y: pos.y[i]! };
+    }
+  }
+  if (!anchor) return [];
+  const d = (i: number) => Math.hypot(pos.x[i]! - anchor!.x, pos.y[i]! - anchor!.y);
+  const passes: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const di = d(i);
+    const prev = i > 0 && seg[i - 1] === seg[i] ? d(i - 1) : Infinity;
+    const next = i < n - 1 && seg[i + 1] === seg[i] ? d(i + 1) : Infinity;
+    if (di < radius && di <= prev && di < next) {
+      const last = passes[passes.length - 1];
+      if (last !== undefined && pos.t[i]! - pos.t[last]! < 20_000) {
+        if (di < d(last)) passes[passes.length - 1] = i; // same pass, closer sample
+      } else passes.push(i);
+    }
+  }
+  const out: { startMs: number; endMs: number; pathLengthM: number }[] = [];
+  for (let k = 1; k < passes.length && out.length < max; k++) {
+    const a = passes[k - 1]!;
+    const b = passes[k]!;
+    if (seg[a] !== seg[b]) continue;
+    const len = cum[b]! - cum[a]!;
+    const sec = (pos.t[b]! - pos.t[a]!) / 1000;
+    if (len < minLen || len > maxLen || (len / sec) * 3.6 < minMean) continue;
+    out.push({ startMs: pos.t[a]!, endMs: pos.t[b]!, pathLengthM: len });
+  }
+  return out;
 }
 
 /** Distance along the centreline nearest to a point (used for map clicks). */

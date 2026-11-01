@@ -1,5 +1,5 @@
-import { LemonTeaError, type AuthContext, type SessionBundle } from "@lemon-tea/shared-types";
-import type { ProviderRegistry } from "@lemon-tea/provider-sdk";
+import { LemonTeaError, SessionType, type AuthContext, type SessionBundle } from "@lemon-tea/shared-types";
+import type { ProviderAdapter, ProviderRegistry } from "@lemon-tea/provider-sdk";
 import type { AccessPolicy } from "./access.ts";
 import type { IngestStore } from "./store.ts";
 
@@ -114,7 +114,33 @@ export class IngestionService {
     await this.store.saveQualityReport(uid, INGEST_PROCESSING_VERSION, quality);
     const complete = q.channels.length === 3 && quality.driversWithoutCarData.length === 0;
     await this.store.markIngested(uid, complete ? "complete" : "partial", q.channels);
+    await this.registerUpcoming(provider, source, key, bundle, owner);
     return { sessionId: q.sessionId, owner: owner ? "private" : "public", drivers: bundle.drivers.length, laps: bundle.laps.length, carSamples: car, positionSamples: pos, quality };
+  }
+
+  /**
+   * Adds the meeting's sessions that have not started yet (e.g. the race on Sunday morning) as
+   * calendar rows, so they can be selected, simulated before they run and watched live. They take
+   * the meeting and circuit of the session just loaded; no data is stored for them. Best effort:
+   * a calendar lookup failure never fails the ingest.
+   */
+  private async registerUpcoming(provider: ProviderAdapter, source: string, key: string, bundle: SessionBundle, owner: string | null): Promise<void> {
+    try {
+      const listings = await provider.listSessions(bundle.session.year);
+      const me = listings.find((l) => l.sessionKey === key);
+      if (!me) return;
+      const upcoming = listings.filter((l) => l.meetingKey === me.meetingKey && l.sessionKey !== key && Date.parse(l.dateStart) > Date.now());
+      for (const l of upcoming) {
+        const type = SessionType.safeParse(l.type);
+        if (!type.success) continue;
+        await this.store.upsertSession(owner, {
+          meeting: bundle.meeting,
+          session: { ...bundle.session, id: `${source}:${l.sessionKey}`, name: l.name, type: type.data, dateStart: l.dateStart, dateEnd: l.dateEnd },
+        });
+      }
+    } catch {
+      // calendar unavailable: upcoming sessions appear once they are loaded themselves
+    }
   }
 
   /**

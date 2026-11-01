@@ -228,9 +228,18 @@ export class StrategySimulationService {
   /** Assemble field and parameters from data: pace from long runs, grid from qualifying/race. */
   async buildField(ctx: AuthContext, raceSessionId: string, paceSessionIds: string[], gridSessionId?: string, totalLapsIn?: number): Promise<FieldBuild> {
     const race = await this.access.session(ctx, raceSessionId, "simulations:execute");
-    const rb = await this.timing.bundleFor(race);
+    let rb = await this.timing.bundleFor(race);
     const notes: string[] = [];
     const pp = await paceParams(this.store);
+    // Before the race (or before it is ingested) the race session has no entry list yet: take the
+    // field from the latest ingested session of the same weekend and the grid from its qualifying.
+    if (!rb.drivers.length) {
+      const pre = await this.preRaceContext(ctx, race, gridSessionId);
+      if (!pre) throw new LemonTeaError("data_unavailable", "No ingested session this weekend to take the entry list from; ingest a practice or qualifying session first");
+      rb = { ...rb, drivers: pre.drivers };
+      gridSessionId = pre.gridSessionId;
+      notes.push(pre.note);
+    }
 
     const paceIds = paceSessionIds.length ? paceSessionIds : [];
     const pace = paceIds.length ? await this.practice.longRuns(ctx, paceIds, pp) : null;
@@ -264,6 +273,10 @@ export class StrategySimulationService {
       for (const l of gb.laps) if (l.lapTime !== null && !l.isPitOutLap) best.set(l.driverNumber, Math.min(best.get(l.driverNumber) ?? Infinity, l.lapTime));
       const pole = Math.min(...best.values());
       for (const [d, t] of best) qualiGap.set(d, t - pole);
+      // no classification (e.g. a practice session): best-lap order
+      if (!gridOrder.length) gridOrder = [...best].sort((a, b) => a[1] - b[1]).map(([d]) => d);
+      // drivers without a timed lap start at the back in car-number order
+      for (const d of rb.drivers.map((x) => x.driverNumber).sort((a, b) => a - b)) if (gridOrder.length && !gridOrder.includes(d)) gridOrder.push(d);
     }
     if (!gridOrder.length) {
       const first = new Map<number, number>();
@@ -331,6 +344,30 @@ export class StrategySimulationService {
     const missing = field.filter((c) => fused(c.driverNumber) === null).map((c) => c.code);
     if (missing.length) notes.push(`No pace data for ${missing.join(", ")}: field median + 1.0 s with wide uncertainty.`);
     return { field, params, notes, raceSession: race };
+  }
+
+  /** Entry list and grid source for a race that has not started (or has not been ingested). */
+  private async preRaceContext(ctx: AuthContext, race: AuthorizedSession, gridSessionId: string | undefined): Promise<{ drivers: TimingBundle["drivers"]; gridSessionId: string | undefined; note: string } | null> {
+    const weekend = (await this.store.listSessions(this.access.scope(ctx), { meetingId: race.meetingId, ingestedOnly: true, limit: 20 }))
+      .filter((x) => x.id !== race.id && x.ingestStatus !== "not_ingested" && x.ingestStatus !== "failed" && x.dateStart <= race.dateStart)
+      .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
+    for (const cand of weekend) {
+      let s: AuthorizedSession;
+      try {
+        s = await this.access.session(ctx, cand.id, "sessions:read");
+      } catch {
+        continue;
+      }
+      const b = await this.timing.bundleFor(s);
+      if (!b.drivers.length) continue;
+      const wantGrid = race.type === "sprint" ? "sprint_qualifying" : "qualifying";
+      const grid = gridSessionId ?? weekend.find((x) => x.type === wantGrid)?.id ?? (weekend.some((x) => x.type === "qualifying") ? weekend.find((x) => x.type === "qualifying")!.id : undefined);
+      const note = grid
+        ? `Pre-race simulation: entry list from ${s.name}, grid from ${weekend.find((x) => x.id === grid)?.name ?? "qualifying"}.`
+        : `Pre-race simulation: entry list from ${s.name}; no qualifying ingested yet, so the grid follows best lap times in ${s.name}.`;
+      return { drivers: b.drivers, gridSessionId: grid ?? s.id, note };
+    }
+    return null;
   }
 
   async simulate(ctx: AuthContext, q: {

@@ -33,7 +33,7 @@ body {
   background: var(--color-ink-0);
   color: var(--color-fg);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -52,7 +52,7 @@ body {
 }
 
 .label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -94,7 +94,7 @@ input[type="password"] {
   border-radius: 4px;
   color: var(--color-fg);
   padding: 4px 8px;
-  font-size: 13px;
+  font-size: 14px;
 }
 select:focus,
 input:focus {
@@ -104,7 +104,7 @@ input:focus {
 .car-label {
   pointer-events: none;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 3px;

@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Group, Panel, Separator, usePanelRef, useGroupRef, type Layout } from "react-resizable-panels";
 import { sessionEndMs } from "./command/sessionEnd";
-import { useBundle, useCircuit, useSelectionCompare } from "../data";
+import { get } from "../api";
+import { useBundle, useCircuit, useInfo, useSelectionCompare } from "../data";
+import { isLiveWindow, useLiveFeed, type LiveStatus } from "../state/live";
 import { clock } from "../state/clock";
 import { useUi, type CameraMode, type Overlay } from "../state/store";
 import { Btn, Empty, ErrorNote, Frame, KindBadge, Loading } from "../components/ui";
@@ -10,6 +13,7 @@ import { TimingTower } from "./command/TimingTower";
 import { Circuit3D } from "./command/Circuit3D";
 import { RaceIntel } from "./command/RaceIntel";
 import { Playback } from "./command/Playback";
+import { LiveTelemetry } from "./command/LiveTelemetry";
 
 type Preset = "Live Race" | "Qualifying" | "Strategy" | "Telemetry Comparison";
 const PRESETS: Record<Preset, { cols: Layout; rows: Layout }> = {
@@ -49,11 +53,78 @@ const OVERLAYS: { id: Overlay; label: string }[] = [
   { id: "brake", label: "Brake A" },
 ];
 
+function LiveBadge({ status, follow, onFollow }: { status: LiveStatus; follow: boolean; onFollow: () => void }) {
+  const tone =
+    status.state === "live" ? "border-f1/70 bg-f1/15 text-fg" : status.state === "error" || status.state === "unavailable" ? "border-bad/50 text-bad" : "border-lemon/50 text-lemon";
+  const label = { live: "LIVE", connecting: "Connecting", waiting: "Waiting for data", degraded: "Degraded", unavailable: "Live unavailable", error: "Live error", closed: "Offline" }[status.state];
+  return (
+    <span className="flex items-center gap-2">
+      <span className={`inline-flex h-6 items-center gap-1.5 rounded-full border px-2 text-[13px] font-bold tracking-wider ${tone}`} title={status.message ?? undefined}>
+        <span className={`h-2 w-2 rounded-full ${status.state === "live" ? "animate-pulse bg-f1-hi" : "bg-current"}`} />
+        {label}
+        {status.state === "live" && status.lagMs !== null && <span className="num font-normal text-fg-3">lag {(status.lagMs / 1000).toFixed(1)} s</span>}
+      </span>
+      {status.message && status.state !== "live" && <span className="max-w-72 truncate text-[13px] text-fg-3">{status.message}</span>}
+      <Btn active={follow} onClick={onFollow} title="Keep the clock at the live edge">
+        {follow ? "● Following live" : "Go live"}
+      </Btn>
+    </span>
+  );
+}
+
 export default function CommandCenter({ active = true }: { active?: boolean }) {
-  const { sessionId, camera, overlay, set, driverA, driverB, elevationExaggeration } = useUi();
+  const { sessionId, meetingId, camera, overlay, set, driverA, driverB, elevationExaggeration } = useUi();
   const bundle = useBundle(sessionId);
   const circuit = useCircuit(sessionId);
   const cmp = useSelectionCompare();
+  const info = useInfo(sessionId);
+  const session = info.data?.session ?? null;
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const isLive = !!session && isLiveWindow(session, now);
+  const [follow, setFollow] = useState(true);
+  const feed = useLiveFeed(sessionId, bundle.data?.epochMs ?? null, isLive && active);
+
+  // A live session that is not ingested has no entry list yet: borrow it from the weekend's latest session.
+  const needRoster = isLive && !!bundle.data && bundle.data.drivers.length === 0;
+  const weekend = useQuery({ queryKey: ["sessions", meetingId], queryFn: () => get.sessions(meetingId!, false), enabled: needRoster && !!meetingId });
+  const rosterId = needRoster
+    ? ([...(weekend.data ?? [])].filter((x) => x.id !== sessionId && x.ingestStatus !== "not_ingested").sort((a, b) => b.dateStart.localeCompare(a.dateStart))[0]?.id ?? null)
+    : null;
+  const roster = useBundle(rosterId);
+  const view = useMemo(() => {
+    const b = bundle.data;
+    if (!b || !isLive) return b;
+    const t = feed.timing;
+    const laps = new Map(b.laps.map((l) => [`${l.driverNumber}:${l.lapNumber}`, l]));
+    for (const l of t.laps) laps.set(`${l.driverNumber}:${l.lapNumber}`, l);
+    return {
+      ...b,
+      drivers: b.drivers.length ? b.drivers : (roster.data?.drivers ?? []),
+      laps: [...laps.values()],
+      positionHistory: [...b.positionHistory, ...t.positionHistory],
+      intervals: [...b.intervals, ...t.intervals],
+      raceControl: [...b.raceControl, ...t.raceControl],
+      weather: [...b.weather, ...t.weather],
+    };
+  }, [bundle.data, isLive, feed.timing, roster.data]);
+
+  // Follow the live edge: play in real time, re-sync when drifting, extend the range as data arrives.
+  useEffect(() => {
+    if (!isLive || !follow || !feed.buffer) return;
+    const buf = feed.buffer;
+    const id = setInterval(() => {
+      if (buf.latestMs === -Infinity) return;
+      const edge = buf.latestMs - 1500; // stay just behind the newest sample so cars interpolate
+      clock.setRange(Math.min(clock.min, edge), buf.latestMs);
+      if (Math.abs(clock.now() - edge) > 2500) clock.seek(edge);
+      if (!clock.playing) clock.play();
+    }, 250);
+    return () => clearInterval(id);
+  }, [isLive, follow, feed.buffer]);
   const cols = useGroupRef();
   const rows = useGroupRef();
   const towerRef = usePanelRef();
@@ -88,7 +159,7 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
   if (!sessionId) return <Empty>Select a season, weekend and session in the top bar.</Empty>;
   if (bundle.isLoading) return <Loading what="Loading session timing" />;
   if (bundle.isError) return <ErrorNote error={bundle.error} />;
-  const b = bundle.data!;
+  const b = view!;
 
   return (
     <div className="flex h-full flex-col">
@@ -103,7 +174,9 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
         <Btn onClick={() => toggle(towerRef)}>Tower</Btn>
         <Btn onClick={() => toggle(intelRef)}>Intel</Btn>
         <Btn onClick={() => toggle(bottomRef)}>Timeline</Btn>
-        <span className="ml-auto text-[11px] text-fg-3">
+        {isLive && <span className="mx-2 h-4 w-px bg-line" />}
+        {isLive && <LiveBadge status={feed.status} follow={follow} onFollow={() => setFollow(!follow)} />}
+        <span className="ml-auto text-[13px] text-fg-3">
           {driverA === null ? "Click a driver for A, Ctrl/Cmd-click for B" : driverB === null ? "Ctrl/Cmd-click a second driver to compare" : "Comparing fastest laps of A and B"}
         </span>
       </div>
@@ -134,9 +207,9 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                 <div className="relative h-full">
                   {circuit.isLoading && <Loading what="Deriving circuit geometry" />}
                   {circuit.isError && <ErrorNote error={circuit.error} />}
-                  {circuit.data && <Circuit3D circuit={circuit.data} bundle={b} sessionId={sessionId} cmp={cmp.data} active={active} />}
+                  {circuit.data && <Circuit3D circuit={circuit.data} bundle={b} sessionId={sessionId} cmp={cmp.data} active={active} live={isLive ? feed.buffer : null} />}
                   {circuit.data && (
-                    <div className="pointer-events-none absolute left-2 top-2 space-y-1 text-[11px]">
+                    <div className="pointer-events-none absolute left-2 top-2 space-y-1 text-[13px]">
                       <div className="pointer-events-auto rounded border border-line-2 bg-ink-1/90 px-2 py-1 text-fg-2" title={JSON.stringify(circuit.data.provenance, null, 1)}>
                         Driven-line estimate · ±{circuit.data.accuracyM?.toFixed(1) ?? "?"} m · {circuit.data.confidence} · {circuit.data.lengthM.toFixed(0)} m
                       </div>
@@ -161,13 +234,13 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                         </Btn>
                       )}
                       {overlay === "delta" && cmp.data && (
-                        <span className="ml-1 text-[11px]">
+                        <span className="ml-1 text-[13px]">
                           <span className="text-lemon">■ {cmp.data.a.driverCode} gaining</span> <span className="text-teal">■ {cmp.data.b.driverCode} gaining</span>
                         </span>
                       )}
-                      {cmp.isLoading && <span className="text-[11px] text-fg-3">comparing…</span>}
-                      {cmp.isError && <span className="text-[11px] text-bad">{(cmp.error as Error).message}</span>}
-                      <span className="text-[11px] text-fg-3">· click track to set cursor</span>
+                      {cmp.isLoading && <span className="text-[13px] text-fg-3">comparing…</span>}
+                      {cmp.isError && <span className="text-[13px] text-bad">{(cmp.error as Error).message}</span>}
+                      <span className="text-[13px] text-fg-3">· click track to set cursor</span>
                     </div>
                   )}
                 </div>
@@ -189,9 +262,19 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
             </Panel>
             <Separator className="w-px" />
             <Panel id="tele" minSize="25%">
-              <Frame title={<>Telemetry {cmp.data && <KindBadge kind="measured" title="Channels measured; distance alignment calculated" />}</>}>
-                {cmp.data?.traces ? <TelemetryStack cmp={cmp.data} channels={["delta", "speed", "throttle"]} /> : <Empty>Select drivers A and B in the timing tower to compare their fastest laps.</Empty>}
-              </Frame>
+              {isLive ? (
+                <Frame title={<>Live telemetry <KindBadge kind="measured" title="Live car data; track distance from live positions projected on the derived circuit" /></>}>
+                  {feed.buffer && circuit.data ? (
+                    <LiveTelemetry buffer={feed.buffer} revision={feed.revision} circuit={circuit.data} drivers={b.drivers} a={driverA} b={driverB} />
+                  ) : (
+                    <Empty>{circuit.data ? "Connecting to the live feed…" : "Live telemetry needs the circuit layout (ingest any session at this circuit)."}</Empty>
+                  )}
+                </Frame>
+              ) : (
+                <Frame title={<>Telemetry {cmp.data && <KindBadge kind="measured" title="Channels measured; distance alignment calculated" />}</>}>
+                  {cmp.data?.traces ? <TelemetryStack cmp={cmp.data} channels={["delta", "speed", "throttle"]} /> : <Empty>Select drivers A and B in the timing tower to compare their fastest laps.</Empty>}
+                </Frame>
+              )}
             </Panel>
           </Group>
         </Panel>

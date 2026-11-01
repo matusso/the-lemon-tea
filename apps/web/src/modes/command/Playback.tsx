@@ -52,9 +52,9 @@ export function Playback({ bundle }: { bundle: TimingBundle }) {
             </Btn>
           ))}
         </div>
-        <span className="num ml-3 text-[14px] text-fg">{fmtClock(t)}</span>
-        <span className="num text-[11px] text-fg-3">{new Date(bundle.epochMs + t).toISOString().slice(11, 19)} UTC</span>
-        <span className="ml-auto rounded border border-line-2 px-2 py-0.5 text-[11px] text-fg-2" title="Source freshness">
+        <span className="num ml-3 text-[16px] text-fg">{fmtClock(t)}</span>
+        <span className="num text-[13px] text-fg-3">{new Date(bundle.epochMs + t).toISOString().slice(11, 19)} UTC</span>
+        <span className="ml-auto rounded border border-line-2 px-2 py-0.5 text-[13px] text-fg-2" title="Source freshness">
           Historical replay · source latency n/a
         </span>
       </div>
@@ -81,7 +81,7 @@ export function Playback({ bundle }: { bundle: TimingBundle }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <table className="w-full text-[12px]">
+        <table className="w-full text-[14px]">
           <tbody>
             {recent.map((e, i) => (
               <tr key={i} className="cursor-pointer border-b border-line/50 hover:bg-ink-3" onClick={() => clock.seek(e.tMs)}>

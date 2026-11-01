@@ -6,6 +6,7 @@ import { useUi, type LapPick } from "../state/store";
 import { dash, Empty, ErrorNote, fmtLap, fmtNum, Frame, KindBadge, Loading } from "../components/ui";
 import { COLOR_A, COLOR_B, TelemetryStack } from "../components/TelemetryCharts";
 import { TrackMap2D } from "../components/TrackMap2D";
+import { Combobox } from "../components/Combobox";
 
 function LapPicker({ which, pick, color }: { which: "lapA" | "lapB"; pick: LapPick; color: string }) {
   const { meetingId, set } = useUi();
@@ -17,35 +18,45 @@ function LapPicker({ which, pick, color }: { which: "lapA" | "lapB"; pick: LapPi
   const fastest = timed.filter((l) => !l.isPitOutLap).reduce<number | null>((m, l) => (m === null || l.lapTime! < m ? l.lapTime! : m), null);
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded border px-2 py-1" style={{ borderColor: `${color}55` }}>
-      <span className="text-[12px] font-bold" style={{ color }}>
+      <span className="text-[14px] font-bold" style={{ color }}>
         {which === "lapA" ? "A" : "B"}
       </span>
-      <select value={pick.sessionId ?? ""} onChange={(e) => update({ sessionId: e.target.value, lapNumber: null })}>
-        {sessions.data
-          ?.filter((s) => s.ingestStatus !== "not_ingested")
-          .map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-      </select>
-      <select value={pick.driverNumber ?? ""} onChange={(e) => update({ driverNumber: Number(e.target.value), lapNumber: null })}>
-        <option value="">driver…</option>
-        {bundle.data?.drivers.map((d) => (
-          <option key={d.driverNumber} value={d.driverNumber}>
-            {d.code} #{d.driverNumber}
-          </option>
-        ))}
-      </select>
-      <select value={pick.lapNumber ?? ""} onChange={(e) => update({ lapNumber: e.target.value ? Number(e.target.value) : null })} disabled={!laps.data}>
-        <option value="">fastest</option>
-        {timed.map((l) => (
-          <option key={l.lapNumber} value={l.lapNumber}>
-            L{l.lapNumber} {fmtLap(l.lapTime)} {l.compound?.[0] ?? ""}
-            {l.isPitOutLap ? " (out)" : l.lapTime === fastest ? " ★" : ""}
-          </option>
-        ))}
-      </select>
+      <Combobox
+        ariaLabel={`Session ${which === "lapA" ? "A" : "B"}`}
+        value={pick.sessionId}
+        minWidth={130}
+        placeholder="Session…"
+        onChange={(v) => update({ sessionId: v, lapNumber: null })}
+        options={(sessions.data ?? [])
+          .filter((s) => s.ingestStatus !== "not_ingested")
+          .sort((a, b) => a.dateStart.localeCompare(b.dateStart))
+          .map((s) => ({ value: s.id, label: s.name, hint: new Date(s.dateStart).toLocaleDateString(undefined, { weekday: "short" }) }))}
+      />
+      <Combobox
+        ariaLabel={`Driver ${which === "lapA" ? "A" : "B"}`}
+        value={pick.driverNumber}
+        minWidth={120}
+        placeholder="Driver…"
+        loading={bundle.isLoading}
+        onChange={(v) => update({ driverNumber: v, lapNumber: null })}
+        options={(bundle.data?.drivers ?? []).map((d) => ({ value: d.driverNumber, label: d.code, hint: `#${d.driverNumber}`, color: `#${d.teamColour}`, keywords: `${d.fullName} ${d.teamName}` }))}
+      />
+      <Combobox
+        ariaLabel={`Lap ${which === "lapA" ? "A" : "B"}`}
+        value={pick.lapNumber ?? 0}
+        minWidth={130}
+        disabled={!laps.data}
+        onChange={(v) => update({ lapNumber: v === 0 ? null : v })}
+        options={[
+          { value: 0, label: "Fastest lap", hint: fastest !== null ? fmtLap(fastest) : undefined },
+          ...timed.map((l) => ({
+            value: l.lapNumber,
+            label: `L${l.lapNumber}${l.isPitOutLap ? " (out)" : l.lapTime === fastest ? " ★" : ""}`,
+            hint: `${fmtLap(l.lapTime)} ${l.compound?.[0] ?? ""}`.trim(),
+            keywords: l.compound ?? "",
+          })),
+        ]}
+      />
     </div>
   );
 }
@@ -55,8 +66,8 @@ function CornerTable({ cmp }: { cmp: CompareResponse }) {
   const set = useUi((s) => s.set);
   const m = (v: number | null | undefined, d = 0) => (v === null || v === undefined ? dash : v.toFixed(d));
   return (
-    <table className="num w-full text-[12px]">
-      <thead className="sticky top-0 bg-ink-1 text-left text-[10px] uppercase tracking-wider text-fg-3">
+    <table className="num w-full text-[14px]">
+      <thead className="sticky top-0 bg-ink-1 text-left text-[12px] uppercase tracking-wider text-fg-3">
         <tr>
           <th className="px-1.5 py-1">Corner</th>
           <th className="px-1 text-right">Δ total</th>
@@ -81,7 +92,7 @@ function CornerTable({ cmp }: { cmp: CompareResponse }) {
             <tr key={c.corner.index} onClick={() => set({ cursorDistance: c.corner.minSpeedDistance })} className={`cursor-pointer border-b border-line/50 hover:bg-ink-3 ${active ? "bg-lemon/10" : ""}`}>
               <td className="px-1.5 py-0.5">
                 <span className="font-bold">{c.corner.label}</span> <span className="text-fg-3">{c.corner.band}</span>
-                {c.dominant_phase && <span className="ml-1 text-[10px] text-fg-3">({c.dominant_phase})</span>}
+                {c.dominant_phase && <span className="ml-1 text-[12px] text-fg-3">({c.dominant_phase})</span>}
               </td>
               <td className="px-1 text-right">{dc(c.delta_change_seconds)}</td>
               <td className="px-1 text-right">{dc(ph("entry"))}</td>
@@ -113,7 +124,7 @@ function CornerTable({ cmp }: { cmp: CompareResponse }) {
 function Summary({ cmp }: { cmp: CompareResponse }) {
   const maxAbs = Math.max(0.01, ...cmp.mini_sectors.map((m) => Math.abs(m.deltaChange)));
   return (
-    <div className="space-y-3 p-2.5 text-[13px]">
+    <div className="space-y-3 p-2.5 text-[15px]">
       <div className="flex items-baseline gap-3">
         <span className="num text-[22px]" style={{ color: cmp.time_delta_seconds <= 0 ? COLOR_A : COLOR_B }}>
           {fmtNum(cmp.time_delta_seconds, 3, true)} s
@@ -122,7 +133,7 @@ function Summary({ cmp }: { cmp: CompareResponse }) {
           lap time {cmp.a.driverCode} {fmtLap(cmp.a.lapTime)} vs {cmp.b.driverCode} {fmtLap(cmp.b.lapTime)}
         </span>
       </div>
-      <div className="text-[12px] text-fg-3">{cmp.delta_semantics}</div>
+      <div className="text-[14px] text-fg-3">{cmp.delta_semantics}</div>
       <p className="text-fg">{cmp.summary}</p>
       <div className="grid grid-cols-3 gap-1.5">
         {cmp.sectors.map((s) => (
@@ -130,7 +141,7 @@ function Summary({ cmp }: { cmp: CompareResponse }) {
             <div className="label flex justify-between">
               S{s.sector} <KindBadge kind="measured" />
             </div>
-            <div className={`num text-[14px] ${s.measuredDelta === null ? "text-fg-3" : s.measuredDelta < 0 ? "text-lemon" : "text-teal"}`}>{fmtNum(s.measuredDelta, 3, true)}</div>
+            <div className={`num text-[16px] ${s.measuredDelta === null ? "text-fg-3" : s.measuredDelta < 0 ? "text-lemon" : "text-teal"}`}>{fmtNum(s.measuredDelta, 3, true)}</div>
           </div>
         ))}
       </div>
@@ -158,7 +169,7 @@ function Summary({ cmp }: { cmp: CompareResponse }) {
           {cmp.findings.map((f, i) => (
             <li key={i} className="rounded border border-line bg-ink-0/50 p-2">
               <div className="text-fg">{f.text}</div>
-              <div className="num mt-1 flex flex-wrap gap-x-3 text-[11px] text-fg-3">
+              <div className="num mt-1 flex flex-wrap gap-x-3 text-[13px] text-fg-3">
                 {Object.entries(f.evidence).map(([k, v]) => (
                   <span key={k}>
                     {k.replaceAll("_", " ")}: <span className="text-fg-2">{v ?? dash}</span>
@@ -170,7 +181,7 @@ function Summary({ cmp }: { cmp: CompareResponse }) {
           {cmp.findings.length === 0 && <li className="text-fg-3">No section exceeds the {cmp.noise_floor_seconds}s noise floor.</li>}
         </ul>
       </div>
-      <div className="rounded border border-line bg-ink-0/50 p-2 text-[12px] text-fg-2">
+      <div className="rounded border border-line bg-ink-0/50 p-2 text-[14px] text-fg-2">
         <div>
           Quality score <span className="num text-fg">{cmp.confidence.toFixed(2)}</span> ({cmp.meta.dataQuality}) — heuristic, not a probability · noise floor {cmp.noise_floor_seconds}s
         </div>
@@ -184,7 +195,7 @@ function Summary({ cmp }: { cmp: CompareResponse }) {
             </li>
           ))}
         </ul>
-        <div className="mt-1 text-[11px] text-fg-3">{cmp.meta.algorithmVersion}</div>
+        <div className="mt-1 text-[13px] text-fg-3">{cmp.meta.algorithmVersion}</div>
       </div>
     </div>
   );
@@ -219,10 +230,10 @@ export default function TelemetryLab() {
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-ink-1/80 px-3 py-1.5">
         <LapPicker which="lapA" pick={lapA} color={COLOR_A} />
         <LapPicker which="lapB" pick={lapB} color={COLOR_B} />
-        <button className="text-[12px] text-fg-3 hover:text-fg" onClick={() => set({ lapA: lapB, lapB: lapA })}>
+        <button className="text-[14px] text-fg-3 hover:text-fg" onClick={() => set({ lapA: lapB, lapB: lapA })}>
           ⇄ swap
         </button>
-        {cmp.isFetching && <span className="text-[12px] text-fg-3">computing…</span>}
+        {cmp.isFetching && <span className="text-[14px] text-fg-3">computing…</span>}
       </div>
       {cmp.isError && <ErrorNote error={cmp.error} />}
       {!cmp.data && !cmp.isError && (cmp.isLoading ? <Loading what="Aligning laps on distance" /> : <Empty>Pick two laps.</Empty>)}
