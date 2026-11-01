@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const SESSION = process.env.E2E_SESSION ?? "openf1:9908";
 
@@ -8,15 +8,23 @@ test.beforeEach(async ({ page }) => {
   (page as unknown as { errors: string[] }).errors = errors;
 });
 
+/** Pick the session through the header comboboxes (season, weekend, session) by typing to filter. */
+async function pickSession(page: Page) {
+  const info = await (await page.request.get(`/api/sessions/${SESSION}`)).json();
+  const choose = async (box: string, text: string) => {
+    await page.getByRole("combobox", { name: box }).click();
+    await page.keyboard.type(text);
+    await page.getByRole("option", { name: new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).first().click();
+  };
+  await choose("Season", String(info.session.year));
+  await choose("Race weekend", info.session.meetingName);
+  await choose("Session", info.session.name);
+}
+
 test("command center loads a session, renders the circuit and advances the timing tower", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("THE LEMON TEA").first()).toBeVisible();
-  // Pick the session through the header selectors (year, meeting, session).
-  const info = await (await page.request.get(`/api/sessions/${SESSION}`)).json();
-  const selects = page.locator("header select, select");
-  await selects.nth(0).selectOption(String(info.session.year));
-  await selects.nth(1).selectOption(info.session.meetingId);
-  await selects.nth(2).selectOption(SESSION);
+  await pickSession(page);
   await expect(page.getByText(/Driven-line estimate/)).toBeVisible({ timeout: 20_000 });
   await expect(page.locator("canvas").first()).toBeVisible();
   await page.getByRole("button", { name: "16×" }).click();
@@ -28,11 +36,7 @@ test("command center loads a session, renders the circuit and advances the timin
 
 test("telemetry lab compares the two fastest drivers with the A_minus_B convention", async ({ page }) => {
   await page.goto("/");
-  const info = await (await page.request.get(`/api/sessions/${SESSION}`)).json();
-  const selects = page.locator("select");
-  await selects.nth(0).selectOption(String(info.session.year));
-  await selects.nth(1).selectOption(info.session.meetingId);
-  await selects.nth(2).selectOption(SESSION);
+  await pickSession(page);
   await page.getByText("Telemetry Lab").click();
   await expect(page.getByText(/negative = A/i).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.locator("canvas:visible").first()).toBeVisible();

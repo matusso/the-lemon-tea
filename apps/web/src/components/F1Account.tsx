@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { Btn } from "./ui";
+import { Combobox } from "./Combobox";
 
 interface ConnectionStatus {
   provider: string;
@@ -37,7 +38,7 @@ const PROVIDER = "f1lt";
  * feed FastF1 uses. The password goes to this server only to be forwarded to Formula 1's sign-in
  * service; it is never stored. Loaded sessions are private to the user's tenant.
  */
-export function F1AccountPanel({ onClose }: { onClose: () => void }) {
+export function F1AccountPanel() {
   const qc = useQueryClient();
   const status = useQuery({ queryKey: ["connection", PROVIDER], queryFn: () => api<ConnectionStatus>(`/api/connections/${PROVIDER}`) });
   const [mode, setMode] = useState<"password" | "token">("password");
@@ -65,12 +66,10 @@ export function F1AccountPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="absolute right-0 top-8 z-50 w-[440px] rounded-md border border-line-2 bg-ink-2 p-3 text-[13px] shadow-2xl">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-fg">Formula 1 account</span>
-        <button className="text-fg-3 hover:text-fg" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
+    <div className="rounded-lg border border-line-2 bg-ink-2/60 p-4 text-[15px]">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="h-4 w-1 rounded-sm bg-f1" aria-hidden />
+        <span className="text-[16px] font-semibold text-fg">Formula 1 account</span>
       </div>
       <StatusLine s={status.data} />
 
@@ -110,7 +109,7 @@ export function F1AccountPanel({ onClose }: { onClose: () => void }) {
               <input className="mb-2 w-full" type="email" autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} required />
               <div className="label mb-1">Password</div>
               <input className="mb-2 w-full" type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              <p className="mb-2 text-[11px] leading-snug text-fg-3">
+              <p className="mb-2 text-[13px] leading-snug text-fg-3">
                 Sent once to Formula 1&apos;s sign-in service (id.formula1.com, as used by account.formula1.com). The password is never stored; only the resulting F1 TV
                 subscription token is kept, encrypted. An active F1 TV subscription is required.
               </p>
@@ -118,17 +117,17 @@ export function F1AccountPanel({ onClose }: { onClose: () => void }) {
           ) : (
             <>
               <div className="label mb-1">F1 TV subscription token</div>
-              <textarea className="mb-2 h-20 w-full font-mono text-[11px]" value={token} onChange={(e) => setToken(e.target.value)} required spellCheck={false} />
-              <p className="mb-2 text-[11px] leading-snug text-fg-3">The JWT FastF1 stores after signing in (f1auth_token.json, field &quot;value&quot;). It is stored encrypted and never shown again.</p>
+              <textarea className="mb-2 h-20 w-full font-mono text-[13px]" value={token} onChange={(e) => setToken(e.target.value)} required spellCheck={false} />
+              <p className="mb-2 text-[13px] leading-snug text-fg-3">The JWT FastF1 stores after signing in (f1auth_token.json, field &quot;value&quot;). It is stored encrypted and never shown again.</p>
             </>
           )}
-          {err && <div className="mb-2 text-[12px] text-bad">{err}</div>}
-          <button className="h-8 w-full rounded bg-f1 text-[13px] font-semibold text-white hover:bg-f1-hi disabled:opacity-50" type="submit" disabled={busy}>
+          {err && <div className="mb-2 text-[14px] text-bad">{err}</div>}
+          <button className="h-8 w-full rounded bg-f1 text-[15px] font-semibold text-white hover:bg-f1-hi disabled:opacity-50" type="submit" disabled={busy}>
             {busy ? "Connecting…" : "Connect"}
           </button>
         </form>
       )}
-      <p className="mt-3 text-[11px] leading-snug text-fg-3">
+      <p className="mt-3 text-[13px] leading-snug text-fg-3">
         Data read with your subscription stays private to your account here and is not shared with other users. Use is subject to Formula 1&apos;s terms.
       </p>
     </div>
@@ -198,13 +197,13 @@ function SessionLoader() {
     <div className="mt-3 border-t border-line pt-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="label">Load from F1 live timing</span>
-        <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-          {Array.from({ length: new Date().getUTCFullYear() - 2017 }, (_, i) => new Date().getUTCFullYear() - i).map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
+        <Combobox
+          ariaLabel="Season to load"
+          value={year}
+          minWidth={92}
+          options={Array.from({ length: new Date().getUTCFullYear() - 2017 }, (_, i) => new Date().getUTCFullYear() - i).map((y) => ({ value: y, label: String(y) }))}
+          onChange={setYear}
+        />
       </div>
       {list.isLoading && <div className="text-fg-3">Loading calendar…</div>}
       {list.isError && <div className="text-bad">{(list.error as Error).message}</div>}
@@ -255,13 +254,13 @@ function SessionLoader() {
               <div className={`h-full rounded-full transition-all ${job.status === "succeeded" ? "bg-good" : "bg-f1"}`} style={{ width: `${Math.round((job.status === "succeeded" ? 1 : job.progress) * 100)}%` }} />
             </div>
           )}
-          <div className="text-[13px] text-fg-2">
+          <div className="text-[15px] text-fg-2">
             {job.status === "failed" ? <span className="text-bad">Failed: {job.error?.message ?? "unknown error"}</span> : `${job.kind === "ingest_weekend" ? "Weekend" : "Session"} ${job.status} · ${Math.round(job.progress * 100)}%`}
             {job.status === "succeeded" && ` — choose ${job.kind === "ingest_weekend" ? "the sessions" : "it"} in the session picker (private to you).`}
           </div>
         </div>
       )}
-      {err && <div className="mt-1 text-[13px] text-bad">{err}</div>}
+      {err && <div className="mt-1 text-[15px] text-bad">{err}</div>}
     </div>
   );
 }

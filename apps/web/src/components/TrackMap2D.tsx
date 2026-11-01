@@ -66,7 +66,7 @@ export function TrackMap2D({ circuit, cmp }: { circuit: CircuitResponse; cmp: Co
       {traj("a") && <path d={traj("a")!} fill="none" stroke={COLOR_A} strokeWidth={sw * 2} opacity={0.95} />}
       {traj("b") && <path d={traj("b")!} fill="none" stroke={COLOR_B} strokeWidth={sw * 2} opacity={0.95} strokeDasharray={`${sw * 5} ${sw * 3}`} />}
       {geo.corners.map((c) => (
-        <text key={c.number} x={c.x + sw * 7} y={-c.y + sw * 4} fill="#b9bbc6" fontSize={sw * 11} fontWeight={600} fontFamily="monospace">
+        <text key={c.number} x={c.x + sw * 7} y={-c.y + sw * 4} fill="#b9bbc6" fontSize={sw * 13} fontWeight={600} fontFamily="monospace">
           {c.label}
         </text>
       ))}

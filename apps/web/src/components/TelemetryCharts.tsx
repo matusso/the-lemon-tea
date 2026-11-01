@@ -39,7 +39,7 @@ export function TelemetryStack({ cmp, channels, height = "100%" }: { cmp: Compar
     const gap = n > 4 ? 1.6 : 3;
     const h = (100 - top - bottom - gap * (n - 1)) / n;
     const grids = chans.map((_, i) => ({ left: 52, right: 14, top: `${top + i * (h + gap)}%`, height: `${h}%` }));
-    const corners = cmp.corners.map((c) => ({ xAxis: c.corner.minSpeedDistance, label: { show: true, formatter: c.corner.label, color: "#82858f", fontSize: 10, position: "insideStartTop" as const } }));
+    const corners = cmp.corners.map((c) => ({ xAxis: c.corner.minSpeedDistance, label: { show: true, formatter: c.corner.label, color: "#82858f", fontSize: 12, position: "insideStartTop" as const } }));
     const series: echarts.SeriesOption[] = [];
     chans.forEach((ch, i) => {
       const xy = (arr: number[] | undefined) => (arr ? tr.a.distance.map((d, k) => [d, arr[k] ?? null]) : []);
@@ -100,12 +100,12 @@ export function TelemetryStack({ cmp, channels, height = "100%" }: { cmp: Compar
         name: `${CHANNELS[ch].label}${CHANNELS[ch].unit ? ` (${CHANNELS[ch].unit})` : ""}`,
         nameLocation: "middle",
         nameGap: 38,
-        nameTextStyle: { color: "#82858f", fontSize: 10 },
+        nameTextStyle: { color: "#82858f", fontSize: 12 },
         scale: CHANNELS[ch].min === undefined,
         ...(CHANNELS[ch].min !== undefined ? { min: CHANNELS[ch].min } : {}),
         ...(CHANNELS[ch].max !== undefined ? { max: CHANNELS[ch].max } : {}),
         splitNumber: 2,
-        axisLabel: { color: AXIS.color, fontSize: 10 },
+        axisLabel: { color: AXIS.color, fontSize: 12 },
         splitLine: { lineStyle: { color: AXIS.split } },
       })),
       dataZoom: [{ type: "inside", xAxisIndex: chans.map((_, i) => i), filterMode: "none" }],
@@ -126,7 +126,7 @@ export function TelemetryStack({ cmp, channels, height = "100%" }: { cmp: Compar
 
   return (
     <div style={{ height }} className="relative">
-      <div className="absolute left-14 top-1 z-10 flex items-center gap-3 text-[11px]">
+      <div className="absolute left-14 top-1 z-10 flex items-center gap-3 text-[13px]">
         <span style={{ color: COLOR_A }}>━ A {cmp.a.driverCode} L{cmp.a.lapNumber}</span>
         <span style={{ color: COLOR_B }}>╍ B {cmp.b.driverCode} L{cmp.b.lapNumber}</span>
         <span className="text-fg-3">Δ negative = A ahead · scroll to zoom</span>

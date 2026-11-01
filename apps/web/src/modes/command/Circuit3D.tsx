@@ -4,7 +4,7 @@ import { Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { nearestDistance, pointAtDistance } from "@lemon-tea/circuit-engine";
-import { positionAt, type TimingBundle } from "@lemon-tea/synchronization";
+import { positionAt, type LiveBuffer, type TimingBundle } from "@lemon-tea/synchronization";
 import type { CircuitResponse, CompareResponse } from "../../api";
 import { clock } from "../../state/clock";
 import { useUi, type Overlay } from "../../state/store";
@@ -138,7 +138,7 @@ function Markers({ geo }: { geo: Geo }) {
         <Html key={c.number} position={toScene(c.x, c.y, 10)} center zIndexRange={[10, 0]}>
           <button
             onClick={() => set({ focusCorner: c.number, camera: "corner" })}
-            className="rounded border border-line-2 bg-ink-1/85 px-1 font-mono text-[11px] text-fg-2 hover:border-lemon hover:text-lemon"
+            className="rounded border border-line-2 bg-ink-1/85 px-1 font-mono text-[13px] text-fg-2 hover:border-lemon hover:text-lemon"
             title={`Detected corner ${c.label} at ${c.distance.toFixed(0)} m (not an official turn number)`}
           >
             {c.label}
@@ -168,10 +168,11 @@ interface CarRef {
   label: HTMLDivElement | null;
 }
 
-function Cars({ geo, bundle, sessionId, origin }: { geo: Geo; bundle: TimingBundle; sessionId: string; origin: Geo["origin"] }) {
+function Cars({ geo, bundle, sessionId, origin, live }: { geo: Geo; bundle: TimingBundle; sessionId: string; origin: Geo["origin"]; live: LiveBuffer | null }) {
   const { driverA, driverB, camera, elevationExaggeration: ex } = useUi();
   const refs = useRef(new Map<number, CarRef>());
-  const cache = useMemo(() => new ReplayCache(sessionId, clock.min, clock.max || Infinity), [sessionId]);
+  // Live: positions come straight from the WebSocket buffer; replay: windows fetched from the API.
+  const cache = useMemo(() => live ?? new ReplayCache(sessionId, clock.min, clock.max || Infinity), [sessionId, live]);
   const target = useRef(new THREE.Vector3());
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
 
@@ -279,7 +280,21 @@ function CameraRig({ geo }: { geo: Geo }) {
 }
 
 /** Interactive 3D circuit: derived driven line, corners, sectors, live/replay car markers. */
-export function Circuit3D({ circuit, bundle, sessionId, cmp, active = true }: { circuit: CircuitResponse; bundle: TimingBundle; sessionId: string; cmp: CompareResponse | undefined; active?: boolean }) {
+export function Circuit3D({
+  circuit,
+  bundle,
+  sessionId,
+  cmp,
+  active = true,
+  live = null,
+}: {
+  circuit: CircuitResponse;
+  bundle: TimingBundle;
+  sessionId: string;
+  cmp: CompareResponse | undefined;
+  active?: boolean;
+  live?: LiveBuffer | null;
+}) {
   const set = useUi((s) => s.set);
   const geo = circuit.geometry;
   const onPick = (dGeo: number) => {
@@ -296,7 +311,7 @@ export function Circuit3D({ circuit, bundle, sessionId, cmp, active = true }: { 
       <Track geo={geo} cmp={cmp} onPick={onPick} />
       <Markers geo={geo} />
       <Cursor geo={geo} cmp={cmp} />
-      <Cars geo={geo} bundle={bundle} sessionId={sessionId} origin={geo.origin} />
+      <Cars geo={geo} bundle={bundle} sessionId={sessionId} origin={geo.origin} live={live} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} maxPolarAngle={Math.PI / 2.05} />
       <CameraRig geo={geo} />
     </Canvas>

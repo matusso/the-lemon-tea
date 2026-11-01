@@ -48,4 +48,4 @@ export function EChart({
   return <div ref={el} className={className} style={{ width: "100%", height: "100%", ...style }} />;
 }
 
-export const baseTextStyle = { color: "#b9bbc6", fontFamily: "JetBrains Mono, ui-monospace, monospace", fontSize: 11 };
+export const baseTextStyle = { color: "#b9bbc6", fontFamily: "JetBrains Mono, ui-monospace, monospace", fontSize: 13 };
