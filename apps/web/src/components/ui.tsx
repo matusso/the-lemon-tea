@@ -3,9 +3,12 @@ import { ApiError } from "../api";
 
 export function Frame({ title, right, children, className = "" }: { title: ReactNode; right?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`flex h-full min-h-0 flex-col bg-ink-1 ${className}`}>
-      <header className="flex h-9 shrink-0 items-center justify-between gap-2 border-b border-line bg-ink-2/60 px-3">
-        <div className="label flex items-center gap-2 !text-fg-2">{title}</div>
+    <section className={`card flex h-full min-h-0 flex-col ${className}`}>
+      <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-line bg-gradient-to-r from-ink-3/70 via-ink-2/40 to-transparent px-3">
+        <div className="label flex items-center gap-2 !text-fg">
+          <span aria-hidden className="h-3.5 w-1 -skew-x-12 rounded-[1px] bg-f1 shadow-[0_0_8px_rgba(225,6,0,0.8)]" />
+          {title}
+        </div>
         <div className="flex items-center gap-2">{right}</div>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">{children}</div>
@@ -16,29 +19,29 @@ export function Frame({ title, right, children, className = "" }: { title: React
 export type Kind = "measured" | "calculated" | "estimated" | "simulated" | "unavailable";
 
 const KIND_STYLE: Record<Kind, string> = {
-  measured: "border-teal/50 text-teal",
-  calculated: "border-fg-3/60 text-fg-2",
-  estimated: "border-lemon/50 text-lemon",
-  simulated: "border-purple/50 text-purple",
-  unavailable: "border-line-2 text-fg-3",
+  measured: "border-teal/40 bg-teal/10 text-teal",
+  calculated: "border-fg-3/40 bg-fg-3/10 text-fg-2",
+  estimated: "border-lemon/40 bg-lemon/10 text-lemon",
+  simulated: "border-purple/40 bg-purple/10 text-purple",
+  unavailable: "border-line-2 bg-ink-3/40 text-fg-3",
 };
 
 export function KindBadge({ kind, title }: { kind: Kind; title?: string }) {
   return (
-    <span title={title} className={`inline-flex h-[18px] items-center rounded-sm border px-1 text-[12px] font-semibold uppercase tracking-wider ${KIND_STYLE[kind]}`}>
+    <span title={title} className={`inline-flex h-[18px] items-center rounded-full border px-1.5 text-[11px] font-bold uppercase tracking-wider ${KIND_STYLE[kind]}`}>
       {kind}
     </span>
   );
 }
 
 export function Btn({ children, onClick, active, disabled, title, variant = "ghost" }: { children: ReactNode; onClick?: () => void; active?: boolean; disabled?: boolean; title?: string; variant?: "ghost" | "primary" }) {
-  const base = "inline-flex h-7 items-center gap-1 whitespace-nowrap rounded px-2.5 text-[14px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+  const base = "inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-[14px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed";
   const style =
     variant === "primary"
-      ? "bg-f1 text-white hover:bg-f1-hi"
+      ? "bg-gradient-to-b from-f1-hi to-f1 text-white shadow-[0_4px_14px_-4px_rgba(225,6,0,0.8)] hover:brightness-110"
       : active
-        ? "bg-f1/15 text-fg border border-f1/60"
-        : "border border-line-2 text-fg-2 hover:text-fg hover:border-fg-3";
+        ? "border border-f1/70 bg-f1/20 text-fg shadow-[0_0_12px_-2px_rgba(225,6,0,0.6)]"
+        : "border border-line-2 bg-ink-2/60 text-fg-2 hover:border-fg-3 hover:bg-ink-3 hover:text-fg";
   return (
     <button type="button" title={title} disabled={disabled} onClick={onClick} className={`${base} ${style}`}>
       {children}
@@ -103,7 +106,7 @@ export function Tyre({ compound, age }: { compound: string | null; age?: number 
   const c = COMPOUND_COLOR[compound] ?? "#888";
   return (
     <span className="inline-flex items-center gap-1">
-      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border-2 text-[11px] font-bold" style={{ borderColor: c, color: c }}>
+      <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full border-[2.5px] bg-ink-0 text-[10px] font-black" style={{ borderColor: c, color: c, boxShadow: `0 0 6px ${c}55` }}>
         {compound[0]}
       </span>
       {age !== undefined && <span className="num text-[14px] text-fg-2">{age ?? dash}</span>}

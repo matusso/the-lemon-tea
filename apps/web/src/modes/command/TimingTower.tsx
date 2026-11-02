@@ -86,13 +86,13 @@ export function TimingTower({ bundle }: { bundle: TimingBundle }) {
                 key={r.driverNumber}
                 onClick={(e) => selectDriver(r.driverNumber, e.metaKey || e.ctrlKey || e.shiftKey)}
                 onDoubleClick={() => togglePin(r.driverNumber)}
-                className={`cursor-pointer border-b border-line/60 hover:bg-ink-3 ${selA ? "bg-lemon/10" : selB ? "bg-teal/10" : ""} ${r.status === "retired" ? "opacity-50" : ""}`}
+                className={`cursor-pointer border-b border-line/40 transition-colors even:bg-white/[0.015] hover:bg-ink-3 ${selA ? "bg-lemon/10" : selB ? "bg-teal/10" : ""} ${r.status === "retired" ? "opacity-50" : ""}`}
                 title="Click: driver A · Ctrl/Cmd/Shift-click: driver B · Double-click: pin"
               >
-                <td className="px-1 py-[3px] text-right text-fg-2">{r.position ?? dash}</td>
+                <td className={`display px-1 py-[3px] text-right text-[15px] ${r.position !== null && r.position <= 3 ? "text-lemon" : "text-fg"}`}>{r.position ?? dash}</td>
                 <td className="px-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="h-3.5 w-[3px] rounded-sm" style={{ background: teamColor(r.teamColour) }} />
+                    <span className="h-4 w-1 -skew-x-12 rounded-[1px]" style={{ background: teamColor(r.teamColour), boxShadow: `0 0 6px ${teamColor(r.teamColour)}88` }} />
                     <span className="w-5 text-right text-fg-3">{r.driverNumber}</span>
                     <span className={`font-bold ${selA ? "text-lemon" : selB ? "text-teal" : "text-fg"}`}>{r.code}</span>
                     {pinned.includes(r.driverNumber) && <span className="text-lemon">•</span>}

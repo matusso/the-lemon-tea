@@ -163,7 +163,7 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-8 shrink-0 items-center gap-2 border-b border-line bg-ink-1/80 px-3">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line/70 bg-ink-1/40 px-3 backdrop-blur">
         <span className="label">Workspace</span>
         {(Object.keys(PRESETS) as Preset[]).map((p) => (
           <Btn key={p} active={preset === p} onClick={() => applyPreset(p)}>
@@ -180,13 +180,13 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
           {driverA === null ? "Click a driver for A, Ctrl/Cmd-click for B" : driverB === null ? "Ctrl/Cmd-click a second driver to compare" : "Comparing fastest laps of A and B"}
         </span>
       </div>
-      <Group orientation="vertical" groupRef={rows} defaultLayout={initial.current.rows} onLayoutChanged={() => (setPreset("Custom"), persist())} className="min-h-0 flex-1">
+      <Group orientation="vertical" groupRef={rows} defaultLayout={initial.current.rows} onLayoutChanged={() => (setPreset("Custom"), persist())} className="min-h-0 flex-1 p-2">
         <Panel id="top" minSize="25%">
           <Group orientation="horizontal" groupRef={cols} defaultLayout={initial.current.cols} onLayoutChanged={() => (setPreset("Custom"), persist())}>
             <Panel id="tower" panelRef={towerRef} collapsible minSize="15%" collapsedSize={0}>
               <TimingTower bundle={b} />
             </Panel>
-            <Separator className="w-px" />
+            <Separator className="mx-[3px] w-[2px]" />
             <Panel id="center" minSize="25%">
               <Frame
                 title={
@@ -246,13 +246,13 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                 </div>
               </Frame>
             </Panel>
-            <Separator className="w-px" />
+            <Separator className="mx-[3px] w-[2px]" />
             <Panel id="intel" panelRef={intelRef} collapsible minSize="15%" collapsedSize={0}>
               <RaceIntel bundle={b} cmp={cmp.data} />
             </Panel>
           </Group>
         </Panel>
-        <Separator className="h-px" />
+        <Separator className="my-[3px] h-[2px]" />
         <Panel id="bottom" panelRef={bottomRef} collapsible minSize="12%" collapsedSize={0}>
           <Group orientation="horizontal">
             <Panel id="playback" defaultSize="45%" minSize="25%">
@@ -260,7 +260,7 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                 <Playback bundle={b} />
               </Frame>
             </Panel>
-            <Separator className="w-px" />
+            <Separator className="mx-[3px] w-[2px]" />
             <Panel id="tele" minSize="25%">
               {isLive ? (
                 <Frame title={<>Live telemetry <KindBadge kind="measured" title="Live car data; track distance from live positions projected on the derived circuit" /></>}>

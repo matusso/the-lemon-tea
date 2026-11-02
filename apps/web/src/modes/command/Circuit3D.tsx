@@ -14,7 +14,7 @@ type Geo = CircuitResponse["geometry"];
 
 const LEMON = new THREE.Color("#e8d44d");
 const TEAL = new THREE.Color("#3fb5c0");
-const BASE = new THREE.Color("#5a5b6b");
+const BASE = new THREE.Color("#4a5168");
 
 /** Source (origin-shifted) metres → scene: x→X, elevation→Y, y→-Z. */
 function toScene(x: number, y: number, z = 0): THREE.Vector3 {
@@ -23,6 +23,14 @@ function toScene(x: number, y: number, z = 0): THREE.Vector3 {
 
 function elevationAt(geo: Geo, i: number, ex: number) {
   return geo.z ? geo.z[i]! * ex : 0;
+}
+
+/** Scene elevation of the driven line at a lap distance (0 without elevation data). */
+function elevationAtDistance(geo: Geo, d: number, ex: number) {
+  if (!geo.z) return 0;
+  const L = geo.distance[geo.distance.length - 1]!;
+  const i = Math.round((((d % L) + L) % L / L) * (geo.x.length - 1));
+  return elevationAt(geo, i, ex);
 }
 
 /** Per-vertex colours for the overlay, sampled from the comparison traces by lap-distance fraction. */
@@ -87,9 +95,36 @@ function Track({ geo, cmp, onPick }: { geo: Geo; cmp: CompareResponse | undefine
     return g;
   }, [geo, cmp, overlay, ex]);
 
-  const edge = useMemo(() => {
-    const pts = geo.x.map((x, i) => toScene(x, geo.y[i]!, elevationAt(geo, i, ex) + 0.3));
-    return new THREE.BufferGeometry().setFromPoints(pts);
+  // White edge lines on both sides of the ribbon and a soft red glow underneath it.
+  const { edges, glow } = useMemo(() => {
+    const n = geo.x.length;
+    const side = (off: number, lift: number) =>
+      geo.x.map((x, i) => {
+        const j = Math.min(n - 1, i + 1);
+        const k = Math.max(0, i - 1);
+        const dx = geo.x[j]! - geo.x[k]!;
+        const dy = geo.y[j]! - geo.y[k]!;
+        const len = Math.hypot(dx, dy) || 1;
+        return toScene(x - (dy / len) * off, geo.y[i]! + (dx / len) * off, elevationAt(geo, i, ex) + lift);
+      });
+    const strip = (half: number, lift: number) => {
+      const l = side(half, lift);
+      const r = side(-half, lift);
+      const pos: number[] = [];
+      const idx: number[] = [];
+      for (let i = 0; i < n; i++) {
+        pos.push(l[i]!.x, l[i]!.y, l[i]!.z, r[i]!.x, r[i]!.y, r[i]!.z);
+        if (i < n - 1) idx.push(2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 1, 2 * i + 3, 2 * i + 2);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      g.setIndex(idx);
+      return g;
+    };
+    return {
+      edges: [side(7.5, 0.4), side(-7.5, 0.4)].map((pts) => new THREE.BufferGeometry().setFromPoints(pts)),
+      glow: [strip(22, -0.4), strip(40, -0.6)],
+    };
   }, [geo, ex]);
 
   const click = (e: ThreeEvent<MouseEvent>) => {
@@ -100,12 +135,20 @@ function Track({ geo, cmp, onPick }: { geo: Geo; cmp: CompareResponse | undefine
 
   return (
     <group>
+      {glow.map((g, i) => (
+        <mesh key={i} geometry={g} renderOrder={-1}>
+          <meshBasicMaterial color="#e10600" transparent opacity={i === 0 ? 0.16 : 0.07} depthWrite={false} blending={THREE.AdditiveBlending} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
       <mesh geometry={geometry} onClick={click}>
         <meshBasicMaterial vertexColors side={THREE.DoubleSide} />
       </mesh>
-      <lineSegments geometry={edge}>
-        <lineBasicMaterial color="#ffffff" transparent opacity={0.45} />
-      </lineSegments>
+      {edges.map((g, i) => (
+        <line key={i}>
+          <primitive object={g} attach="geometry" />
+          <lineBasicMaterial color="#f5f5f7" transparent opacity={0.8} />
+        </line>
+      ))}
     </group>
   );
 }
@@ -120,22 +163,22 @@ function Markers({ geo }: { geo: Geo }) {
         <boxGeometry args={[3, 1, 18]} />
         <meshBasicMaterial color="#ffffff" />
       </mesh>
-      <Html position={toScene(sf.x, sf.y, 6)} center>
+      <Html position={toScene(sf.x, sf.y, (geo.z?.[0] ?? 0) * ex + 6)} center>
         <div className="car-label !transform-none text-fg">S/F</div>
       </Html>
       {ticks.map((t, i) => (
         <group key={i}>
-          <mesh position={toScene(t.p.x, t.p.y, 0.5)}>
+          <mesh position={toScene(t.p.x, t.p.y, elevationAtDistance(geo, t.d, ex) + 0.5)}>
             <cylinderGeometry args={[1.6, 1.6, 1, 12]} />
             <meshBasicMaterial color="#b9bbc6" />
           </mesh>
-          <Html position={toScene(t.p.x, t.p.y, 6)} center>
+          <Html position={toScene(t.p.x, t.p.y, elevationAtDistance(geo, t.d, ex) + 6)} center>
             <div className="car-label !transform-none text-fg-2">S{i + 1}|S{i + 2}</div>
           </Html>
         </group>
       ))}
       {geo.corners.map((c) => (
-        <Html key={c.number} position={toScene(c.x, c.y, 10)} center zIndexRange={[10, 0]}>
+        <Html key={c.number} position={toScene(c.x, c.y, elevationAtDistance(geo, c.distance, ex) + 10)} center zIndexRange={[10, 0]}>
           <button
             onClick={() => set({ focusCorner: c.number, camera: "corner" })}
             className="rounded border border-line-2 bg-ink-1/85 px-1 font-mono text-[13px] text-fg-2 hover:border-lemon hover:text-lemon"
@@ -151,12 +194,13 @@ function Markers({ geo }: { geo: Geo }) {
 
 function Cursor({ geo, cmp }: { geo: Geo; cmp: CompareResponse | undefined }) {
   const cursor = useUi((s) => s.cursorDistance);
+  const ex = useUi((s) => s.elevationExaggeration);
   if (cursor === null) return null;
   const L = geo.distance[geo.distance.length - 1]!;
   const d = cmp ? (cursor / cmp.reference_length_m) * L : cursor;
   const p = pointAtDistance(geo, d);
   return (
-    <mesh position={toScene(p.x, p.y, 2)}>
+    <mesh position={toScene(p.x, p.y, elevationAtDistance(geo, d, ex) + 2)}>
       <torusGeometry args={[11, 1.4, 8, 32]} />
       <meshBasicMaterial color="#e8d44d" />
     </mesh>
@@ -259,10 +303,13 @@ function CameraRig({ geo }: { geo: Geo }) {
     const radius = bounds.getBoundingSphere(new THREE.Sphere()).radius;
     const vfov = THREE.MathUtils.degToRad(cam.fov);
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
-    const fit = (radius / Math.sin(Math.min(vfov, hfov) / 2)) * 1.02;
+    const fit = (radius / Math.sin(Math.min(vfov, hfov) / 2)) * 0.82;
+    // Top view: fit the footprint itself (the bounding sphere wastes the panel's corners).
+    const size = bounds.getSize(new THREE.Vector3());
+    const topFit = Math.max(size.z / 2 / Math.tan(vfov / 2), size.x / 2 / Math.tan(hfov / 2)) * 1.12;
     let pos: THREE.Vector3;
     let target = center;
-    if (mode === "top") pos = center.clone().add(new THREE.Vector3(0, fit, 0.01));
+    if (mode === "top") pos = center.clone().add(new THREE.Vector3(0, topFit, 0.01));
     else if (mode === "corner" && focusCorner !== null) {
       const c = geo.corners.find((k) => k.number === focusCorner);
       target = c ? toScene(c.x, c.y, 0) : center;
@@ -303,11 +350,11 @@ export function Circuit3D({
   };
   return (
     <Canvas frameloop={active ? "always" : "never"} camera={{ fov: 40, near: 5, far: 40000, position: [0, 2000, 2000] }} dpr={[1, 2]} gl={{ antialias: true }} onPointerMissed={() => undefined}>
-      <color attach="background" args={["#0d0d13"]} />
-      <fog attach="fog" args={["#0d0d13", 8000, 20000]} />
+      <color attach="background" args={["#090a10"]} />
+      <fog attach="fog" args={["#090a10", 6000, 16000]} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[500, 1500, 300]} intensity={1.2} />
-      <gridHelper args={[12000, 120, "#24242f", "#191921"]} position={[0, -1, 0]} />
+      <gridHelper args={[12000, 120, "#2a2130", "#151722"]} position={[0, -1, 0]} />
       <Track geo={geo} cmp={cmp} onPick={onPick} />
       <Markers geo={geo} />
       <Cursor geo={geo} cmp={cmp} />

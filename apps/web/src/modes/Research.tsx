@@ -34,7 +34,7 @@ export default function Research() {
   const sources = useQuery({ queryKey: ["sources"], queryFn: get.sources, retry: false });
 
   return (
-    <div className="grid h-full grid-cols-1 gap-px bg-line xl:grid-cols-2">
+    <div className="grid h-full grid-cols-1 panes xl:grid-cols-2">
       <div className="grid min-h-0 grid-rows-2 gap-px">
         <Frame title="Prediction history · scored against actual result">
           {history.isLoading && <Loading />}

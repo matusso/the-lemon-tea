@@ -506,6 +506,17 @@ export class PgStore implements Store, IngestStore {
     });
   }
 
+  async removeSupersededSessions(owner: string | null, meetingId: string, type: string, keepId: string): Promise<number> {
+    return this.scoped({ tenantId: owner }, async (tx) => {
+      const rows = await tx`
+        delete from sessions
+        where meeting_id = ${meetingId} and type = ${type} and id <> ${keepId} and ingest_status = 'not_ingested'
+          and ${owner ? tx`owner_tenant_id = ${owner}` : tx`owner_tenant_id is null`}
+        returning uid`;
+      return rows.length;
+    });
+  }
+
   async writeTiming(uid: string, b: SessionBundle, source: string, processingVersion: string): Promise<void> {
     await this.sql.begin(async (tx) => {
       // Source corrections replace earlier rows: timing tables are rewritten on every ingest.

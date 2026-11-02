@@ -60,6 +60,12 @@ export interface ProviderAdapter {
   fetchCarSamples(sessionKey: string, driverNumber: number, fromIso: string, toIso: string): Promise<CarSamples>;
   fetchPositionSamples(sessionKey: string, driverNumber: number, fromIso: string, toIso: string): Promise<PositionSamples>;
   pollLive?(sessionKey: string, cursor: string | null): Promise<LiveDelta>;
+  /**
+   * Key for a session the provider's calendar does not list yet (e.g. a race before it starts),
+   * which `fetchSession` and `pollLive` resolve to the real session once it is published.
+   * Providers whose calendar lists future sessions do not need it.
+   */
+  pendingSessionKey?(year: number, meetingKey: string, type: string): string;
   /** Source-level data quality notes from the last fetchSession (decode errors, integrity issues). */
   lastQuality?(): Record<string, unknown>;
 }

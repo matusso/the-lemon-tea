@@ -142,6 +142,14 @@ export class F1LiveFeed {
     this.ws = null;
   }
 
+  /** Current session's key, meeting and type from SessionInfo, once the initial state arrived. */
+  get sessionInfo(): { key: number; meetingKey: number | null; type: string; name: string } | null {
+    const s = this.state.SessionInfo;
+    if (!isObject(s) || typeof s.Key !== "number") return null;
+    const meeting = isObject(s.Meeting) ? s.Meeting : {};
+    return { key: s.Key, meetingKey: typeof meeting.Key === "number" ? meeting.Key : null, type: String(s.Type ?? ""), name: String(s.Name ?? "") };
+  }
+
   /** Current session key from SessionInfo, once the initial state arrived. */
   get sessionKey(): number | null {
     const k = this.state.SessionInfo?.Key;
@@ -305,11 +313,11 @@ export class F1LiveFeed {
   }
 
   /** Everything received since the previous drain, for the requested session only. */
-  async drain(sessionKey: number): Promise<LiveDelta> {
+  async drain(sessionKey: number | null): Promise<LiveDelta> {
     await this.queue;
     if (this.closed) throw new Error(`Live timing connection closed: ${this.closed.reason ?? this.closed.code ?? "unknown"}`);
     const current = this.sessionKey;
-    if (current !== null && current !== sessionKey) {
+    if (sessionKey !== null && current !== null && current !== sessionKey) {
       throw new Error(`Session ${sessionKey} is not the session currently live on F1 live timing (${current})`);
     }
     const b = this.buf;

@@ -5,6 +5,8 @@ import { App } from "./App";
 import "@fontsource/titillium-web/400.css";
 import "@fontsource/titillium-web/600.css";
 import "@fontsource/titillium-web/700.css";
+import "@fontsource/titillium-web/700-italic.css";
+import "@fontsource/titillium-web/900.css";
 import "./styles.css";
 
 const qc = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false } } });

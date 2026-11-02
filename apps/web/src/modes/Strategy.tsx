@@ -124,6 +124,23 @@ export default function Strategy() {
     { name: "1-stop M-H", stints: [{ compound: "MEDIUM", laps: 22 }, { compound: "HARD", laps: 31 }] },
     { name: "2-stop M-H-M", stints: [{ compound: "MEDIUM", laps: 16 }, { compound: "HARD", laps: 20 }, { compound: "MEDIUM", laps: 17 }] },
   ]);
+  // Keep the candidate strategies at race distance when the lap count changes (e.g. the pre-race
+  // estimate for a new circuit): stints scale proportionally, the last one takes the rounding.
+  useEffect(() => {
+    setStrats((cur) =>
+      cur.map((s) => {
+        const sum = s.stints.reduce((a, x) => a + x.laps, 0);
+        if (!sum || sum === totalLaps) return s;
+        let used = 0;
+        const stints = s.stints.map((x, i) => {
+          const laps = i === s.stints.length - 1 ? Math.max(1, totalLaps - used) : Math.max(1, Math.round((x.laps / sum) * totalLaps));
+          used += laps;
+          return { ...x, laps };
+        });
+        return { ...s, stints };
+      }),
+    );
+  }, [totalLaps]);
   const [sc, setSc] = useState(0.012);
   const [vsc, setVsc] = useState(0.008);
   const [pitLoss, setPitLoss] = useState<number | null>(null);
@@ -175,7 +192,7 @@ export default function Strategy() {
     return <Empty>The race has not run yet and nothing from this weekend is loaded. Load a practice or qualifying session (user menu › Settings › Formula 1 account) to simulate before the race.</Empty>;
 
   return (
-    <div className="grid h-full grid-cols-1 gap-px bg-line lg:grid-cols-[380px_minmax(0,1fr)]">
+    <div className="grid h-full grid-cols-1 panes lg:grid-cols-[380px_minmax(0,1fr)]">
       <Frame title={<>Scenario <KindBadge kind="simulated" /></>}>
         <div className="space-y-3 p-3 text-[15px]">
           <div className="grid grid-cols-[90px_1fr] items-center gap-2">

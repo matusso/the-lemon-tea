@@ -2,10 +2,17 @@ import { useMemo } from "react";
 import { nearestDistance } from "@lemon-tea/circuit-engine";
 import { liveGap, liveLaps, type LiveBuffer, type LiveLap } from "@lemon-tea/synchronization";
 import type { Driver } from "@lemon-tea/shared-types";
+import { estimateWingsOpen } from "@lemon-tea/telemetry-core";
 import type { CircuitResponse } from "../../api";
 import { AXIS, baseTextStyle, EChart, type EOption } from "../../components/EChart";
 import { COLOR_A, COLOR_B } from "../../components/TelemetryCharts";
-import { Empty, fmtLap } from "../../components/ui";
+import { Empty, fmtLap, KindBadge } from "../../components/ui";
+
+type Chan = "speed" | "throttle" | "brake" | "aero";
+const values = (l: LiveLap & { aero: number[] }, k: Chan) => l[k];
+
+/** Live laps with the estimated active-aero state per point. */
+const withAero = (laps: LiveLap[]) => laps.map((l) => ({ ...l, aero: estimateWingsOpen(l) }));
 
 /** Only the recent past is projected onto the track (enough for the current and previous lap). */
 const WINDOW_MS = 5 * 60_000;
@@ -31,29 +38,30 @@ export function LiveTelemetry({ buffer, revision, circuit, drivers, a, b }: { bu
   const geo = circuit.geometry;
   const L = geo.distance[geo.distance.length - 1]!;
   const project = useMemo(() => (x: number, y: number) => nearestDistance(geo, x - geo.origin.x, y - geo.origin.y).distance, [geo]);
-  const { la, lb } = useMemo(() => ({ la: lapsFor(buffer, a, project, L), lb: lapsFor(buffer, b, project, L) }), [buffer, revision, a, b, project, L]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { la, lb } = useMemo(() => ({ la: withAero(lapsFor(buffer, a, project, L)), lb: withAero(lapsFor(buffer, b, project, L)) }), [buffer, revision, a, b, project, L]); // eslint-disable-line react-hooks/exhaustive-deps
   const gap = useMemo(() => liveGap(la, lb), [la, lb]);
   const code = (dn: number | null) => drivers.find((d) => d.driverNumber === dn)?.code ?? (dn !== null ? `#${dn}` : "—");
 
   const option = useMemo<EOption>(() => {
-    const chans = [
-      { key: "speed" as const, label: "Speed km/h" },
-      { key: "throttle" as const, label: "Throttle %" },
-      { key: "brake" as const, label: "Brake" },
+    const chans: { key: Chan; label: string }[] = [
+      { key: "speed", label: "Speed km/h" },
+      { key: "throttle", label: "Throttle %" },
+      { key: "brake", label: "Brake" },
+      { key: "aero", label: "Wings open (est.)" },
     ];
     const top = 10;
     const gapPct = 4;
     const h = (100 - top - 8 - gapPct * (chans.length - 1)) / chans.length;
     const series: unknown[] = [];
-    const add = (laps: LiveLap[], color: string, who: string) => {
+    const add = (laps: (LiveLap & { aero: number[] })[], color: string, who: string) => {
       const cur = laps[laps.length - 1];
       const prev = [...laps].reverse().find((l) => l.complete);
       chans.forEach((c, i) => {
-        const step = c.key === "brake" ? "end" : undefined;
+        const step = c.key === "brake" || c.key === "aero" ? "end" : undefined;
         if (prev)
-          series.push({ name: `${who} last lap`, type: "line", xAxisIndex: i, yAxisIndex: i, showSymbol: false, silent: true, step, lineStyle: { width: 1, color, opacity: 0.35, type: "dashed" }, itemStyle: { color }, data: prev.distance.map((d, k) => [d, prev[c.key][k]!]) });
+          series.push({ name: `${who} last lap`, type: "line", xAxisIndex: i, yAxisIndex: i, showSymbol: false, silent: true, step, lineStyle: { width: 1, color, opacity: 0.35, type: "dashed" }, itemStyle: { color }, data: prev.distance.map((d, k) => [d, values(prev, c.key)[k]!]) });
         if (cur && cur !== prev)
-          series.push({ name: `${who} now`, type: "line", xAxisIndex: i, yAxisIndex: i, showSymbol: false, step, lineStyle: { width: 1.8, color }, itemStyle: { color }, data: cur.distance.map((d, k) => [d, cur[c.key][k]!]) });
+          series.push({ name: `${who} now`, type: "line", xAxisIndex: i, yAxisIndex: i, showSymbol: false, step, lineStyle: { width: 1.8, color }, itemStyle: { color }, data: cur.distance.map((d, k) => [d, values(cur, c.key)[k]!]) });
       });
     };
     add(la, COLOR_A, code(a));
@@ -79,7 +87,7 @@ export function LiveTelemetry({ buffer, revision, circuit, drivers, a, b }: { bu
         gridIndex: i,
         name: c.label,
         nameTextStyle: { color: AXIS.color, fontSize: 12, align: "left" as const },
-        ...(c.key === "brake" ? { min: 0, max: 1, interval: 1 } : c.key === "throttle" ? { min: 0, max: 100 } : {}),
+        ...(c.key === "brake" || c.key === "aero" ? { min: 0, max: 1, interval: 1 } : c.key === "throttle" ? { min: 0, max: 100 } : {}),
         axisLabel: { color: AXIS.color },
         splitLine: { lineStyle: { color: AXIS.split } },
       })),
@@ -88,6 +96,19 @@ export function LiveTelemetry({ buffer, revision, circuit, drivers, a, b }: { bu
   }, [la, lb, L, a, b]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (a === null || b === null) return <Empty>Select drivers A and B in the timing tower to compare them live.</Empty>;
+  const aeroNow = (laps: (LiveLap & { aero: number[] })[]) => {
+    const l = laps[laps.length - 1];
+    return l?.aero.length ? l.aero[l.aero.length - 1] === 1 : null;
+  };
+  const AeroTag = ({ open }: { open: boolean | null }) =>
+    open === null ? null : (
+      <span
+        className={`ml-2 rounded px-1.5 py-px text-[12px] font-bold tracking-wide ${open ? "bg-teal/20 text-teal" : "bg-ink-3 text-fg-3"}`}
+        title="Estimated: front and rear wing flaps open (2026 straight-line mode) when flat out above 180 km/h for 1 s without braking. F1 live timing publishes no aero channel."
+      >
+        {open ? "WINGS OPEN" : "CORNER MODE"}
+      </span>
+    );
   const lastLap = (laps: LiveLap[]) => {
     const l = [...laps].reverse().find((x) => x.complete);
     return l ? (l.t[l.t.length - 1]! - l.t[0]!) / 1000 : null;
@@ -106,6 +127,7 @@ export function LiveTelemetry({ buffer, revision, circuit, drivers, a, b }: { bu
           <span className="num ml-2 text-fg-3">
             last {fmtLap(lastLap(la))} · now {elapsed(la)?.toFixed(1) ?? "—"} s
           </span>
+          <AeroTag open={aeroNow(la)} />
         </span>
         <span>
           <span className="font-bold" style={{ color: COLOR_B }}>
@@ -114,7 +136,9 @@ export function LiveTelemetry({ buffer, revision, circuit, drivers, a, b }: { bu
           <span className="num ml-2 text-fg-3">
             last {fmtLap(lastLap(lb))} · now {elapsed(lb)?.toFixed(1) ?? "—"} s
           </span>
+          <AeroTag open={aeroNow(lb)} />
         </span>
+        <KindBadge kind="estimated" title="Wing state is inferred from throttle, brake and speed; tyre temperatures are not published by F1 live timing" />
         <span className="ml-auto" title="How long ago the car ahead passed the point where the other car is now (from live positions)">
           On-road gap{" "}
           {gap ? (

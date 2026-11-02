@@ -238,7 +238,7 @@ export default function TelemetryLab() {
       {cmp.isError && <ErrorNote error={cmp.error} />}
       {!cmp.data && !cmp.isError && (cmp.isLoading ? <Loading what="Aligning laps on distance" /> : <Empty>Pick two laps.</Empty>)}
       {cmp.data && (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-px bg-line lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 panes lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="grid min-h-0 grid-rows-[minmax(0,1fr)_200px] gap-px">
             <Frame title={<>Synchronised channels vs lap distance <KindBadge kind="measured" /></>}>
               <TelemetryStack cmp={cmp.data} />

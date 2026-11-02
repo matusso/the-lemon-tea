@@ -200,6 +200,17 @@ export class MemoryStore implements Store, IngestStore {
     });
     return uid;
   }
+  async removeSupersededSessions(owner: string | null, meetingId: string, type: string, keepId: string) {
+    let n = 0;
+    for (const [uid, s] of this.sessions) {
+      const r = s.rec;
+      if (r.ownerTenantId === owner && r.meetingId === meetingId && r.type === type && r.id !== keepId && r.ingestStatus === "not_ingested") {
+        this.sessions.delete(uid);
+        n++;
+      }
+    }
+    return n;
+  }
   async writeTiming(uid: string, b: SessionBundle) { this.sessions.get(uid)!.bundle = b; }
   async writeCarSamples(uid: string, d: number, s: CarSamples) { this.sessions.get(uid)!.car.set(d, s); return s.t.length; }
   async writePositionSamples(uid: string, d: number, s: PositionSamples) { this.sessions.get(uid)!.pos.set(d, s); return s.t.length; }

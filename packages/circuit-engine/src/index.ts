@@ -1,7 +1,7 @@
 import type { DistanceTrace } from "@lemon-tea/shared-types";
 import { detectCorners, grid, indexAt, interpLinear, median, movingAverage, round } from "@lemon-tea/telemetry-core";
 
-export const CIRCUIT_ENGINE_VERSION = "circuit-geometry-v3";
+export const CIRCUIT_ENGINE_VERSION = "circuit-geometry-v4";
 
 export interface LapGeometryCheck {
   ok: boolean;
@@ -111,12 +111,17 @@ export function deriveGeometry(
   const accuracyM = n ? Math.sqrt(ss / n) : Number.NaN;
 
   let z: number[] | undefined;
-  const zs = usable.filter((l) => l.z).map((l) => ga.map((a) => interpLinear(l.trace.distance, l.z!, Math.min((a * scale * lapLen(l.trace)) / L, lapLen(l.trace)))));
+  const zs = usable
+    .filter((l) => l.z)
+    .map((l) => cleanElevation(ga.map((a) => interpLinear(l.trace.distance, l.z!, Math.min((a * scale * lapLen(l.trace)) / L, lapLen(l.trace))))))
+    .filter((zz): zz is number[] => zz !== null);
   if (zs.length >= 2) {
-    const zMed = ga.map((_, i) => median(zs.map((zz) => zz[i]!).filter(Number.isFinite)));
-    const zDev = Math.sqrt(median(zs.flatMap((zz) => zz.map((v, i) => (v - zMed[i]!) ** 2)).filter(Number.isFinite)));
-    const range = Math.max(...zMed) - Math.min(...zMed);
-    if (zDev < 1 && range > 1) z = movingAverage(zMed, 9);
+    const zMed = fillGaps(ga.map((_, i) => median(zs.map((zz) => zz[i]!).filter(Number.isFinite))));
+    if (zMed) {
+      const zDev = Math.sqrt(median(zs.flatMap((zz) => zz.map((v, i) => (v - zMed[i]!) ** 2)).filter(Number.isFinite)));
+      const smooth = movingAverage(zMed, 9);
+      if (zDev < 1 && plausibleElevation(smooth)) z = smooth;
+    }
   }
 
   const origin = { x: median(x), y: median(y), z: z ? Math.min(...z) : 0 };
@@ -160,6 +165,51 @@ export function deriveGeometry(
       kind: "estimated",
     },
   };
+}
+
+/** Largest elevation change on any current F1 circuit is ~100 m (Spa); allow some margin. */
+const MAX_ELEVATION_RANGE_M = 150;
+/** Steepest plausible grade between 5 m samples after smoothing (Eau Rouge is ~18 %). */
+const MAX_GRADE = 0.3;
+
+/**
+ * One lap's elevation on the 5 m grid with missing samples removed. Live feeds encode a missing
+ * z as exactly 0 (circuits sit far above or below sea level by more than noise), and spikes appear
+ * where a sample is interpolated against such a zero. Values far from the lap median are dropped.
+ * Returns null when too little of the lap is left to trust.
+ */
+export function cleanElevation(zs: readonly number[]): number[] | null {
+  const valid = zs.filter((v) => Number.isFinite(v) && v !== 0);
+  if (valid.length < zs.length * 0.8) return null;
+  const m = median(valid);
+  const out = zs.map((v) => (Number.isFinite(v) && v !== 0 && Math.abs(v - m) <= MAX_ELEVATION_RANGE_M ? v : Number.NaN));
+  return out.filter(Number.isFinite).length >= zs.length * 0.8 ? out : null;
+}
+
+/** Linear interpolation over NaN gaps, wrapping around the closed lap; null when nothing is finite. */
+export function fillGaps(xs: readonly number[]): number[] | null {
+  const n = xs.length;
+  const idx = xs.flatMap((v, i) => (Number.isFinite(v) ? [i] : []));
+  if (!idx.length) return null;
+  const out = [...xs];
+  for (let i = 0; i < n; i++) {
+    if (Number.isFinite(out[i]!)) continue;
+    const k = idx.findIndex((j) => j > i);
+    const next = k === -1 ? idx[0]! + n : idx[k]!;
+    const prev = k <= 0 ? idx[idx.length - 1]! - (k === 0 ? n : 0) : idx[k - 1]!;
+    const a = xs[((prev % n) + n) % n]!;
+    const b = xs[next % n]!;
+    out[i] = next === prev ? a : a + ((b - a) * (i - prev)) / (next - prev);
+  }
+  return out;
+}
+
+/** Elevation worth drawing: a real variation, within circuit-plausible range and grade. */
+export function plausibleElevation(z: readonly number[], stepM = 5): boolean {
+  const range = Math.max(...z) - Math.min(...z);
+  if (!(range > 1 && range < MAX_ELEVATION_RANGE_M)) return false;
+  for (let i = 1; i < z.length; i++) if (Math.abs(z[i]! - z[i - 1]!) > MAX_GRADE * stepM) return false;
+  return true;
 }
 
 /**
