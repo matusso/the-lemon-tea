@@ -24,12 +24,16 @@ const MODES: { id: Mode; label: string; short: string; key: string }[] = [
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2 pr-3">
-      <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden>
-        <circle cx="16" cy="16" r="10" fill="none" stroke="#e10600" strokeWidth="2.5" />
-        <path d="M16 6v20M6 16h20M9 9l14 14M23 9 9 23" stroke="#ffd12e" strokeWidth="1.2" opacity=".6" />
+    <div className="flex items-center gap-2.5 pr-4">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden className="drop-shadow-[0_0_6px_rgba(255,209,46,0.45)]">
+        <circle cx="16" cy="16" r="12" fill="#ffd12e" />
+        <circle cx="16" cy="16" r="9.5" fill="#0b0c12" />
+        <path d="M16 7.5v17M7.5 16h17M10 10l12 12M22 10 10 22" stroke="#ffd12e" strokeWidth="1.4" opacity=".85" />
+        <circle cx="16" cy="16" r="2.2" fill="#e10600" />
       </svg>
-      <span className="whitespace-nowrap text-[15px] font-bold tracking-[0.22em] text-fg">THE LEMON TEA</span>
+      <span className="display whitespace-nowrap text-[18px] leading-none tracking-[0.06em] text-fg">
+        Lemon<span className="text-f1">Tea</span>
+      </span>
     </div>
   );
 }
@@ -50,8 +54,8 @@ function SessionPicker() {
   useEffect(() => {
     if (meetings.data && meetings.data.length && !meetings.data.some((m) => m.id === meetingId)) {
       // default to the latest weekend that has started
-      const started = meetings.data.filter((m) => Date.parse(m.dateStart) <= Date.now());
-      set({ meetingId: (started[started.length - 1] ?? meetings.data[0]!).id });
+      const started = meetings.data.filter((m) => Date.parse(m.dateStart) <= Date.now()).sort((a, b) => b.dateStart.localeCompare(a.dateStart));
+      set({ meetingId: (started[0] ?? meetings.data[0]!).id });
     }
   }, [meetings.data, meetingId, set]);
   useEffect(() => {
@@ -239,7 +243,7 @@ function Footer() {
   const sessionId = useUi((s) => s.sessionId);
   const info = useInfo(sessionId);
   return (
-    <footer className="flex h-7 shrink-0 items-center justify-between gap-4 border-t border-line bg-ink-1 px-3 text-[13px] text-fg-3">
+    <footer className="flex h-7 shrink-0 items-center justify-between gap-4 border-t border-line bg-ink-1/80 px-3 text-[12px] text-fg-3 backdrop-blur">
       <span className="truncate">{info.data?.attribution ?? "Select a session"}</span>
       <span className="shrink-0">Independent open-source project · not affiliated with or endorsed by Formula 1</span>
     </footer>
@@ -264,26 +268,31 @@ export function App() {
 
   return (
     <div className="grid-bg flex h-full flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b-2 border-f1 bg-ink-1 px-3">
-        <Brand />
-        <nav className="flex items-center gap-0.5 overflow-x-auto">
-          {MODES.map((m, i) => (
-            <button
-              key={m.id}
-              title={`${m.label} (Alt+${i + 1})`}
-              onClick={() => set({ mode: m.id })}
-              className={`h-12 whitespace-nowrap border-b-2 px-3 text-[14px] font-medium tracking-wide transition-colors ${mode === m.id ? "border-f1 bg-f1/10 text-fg" : "border-transparent text-fg-3 hover:text-fg-2"}`}
-            >
-              <span className="mr-1.5 text-fg-3">{m.key}</span>
-              <span className="hidden 2xl:inline">{m.label}</span>
-              <span className="2xl:hidden">{m.short}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="ml-auto flex items-center gap-3">
-          <SessionPicker />
-          <Account />
+      <header className="shrink-0 bg-ink-1/80 backdrop-blur">
+        <div className="flex h-14 items-center gap-3 px-3">
+          <Brand />
+          <nav className="flex items-center gap-1 overflow-x-auto rounded-xl border border-line bg-ink-0/60 p-1">
+            {MODES.map((m, i) => (
+              <button
+                key={m.id}
+                title={`${m.label} (Alt+${i + 1})`}
+                onClick={() => set({ mode: m.id })}
+                className={`h-9 whitespace-nowrap rounded-lg px-3 text-[14px] font-semibold tracking-wide transition-all ${mode === m.id ? "-skew-x-6 bg-gradient-to-b from-f1-hi to-f1 text-white shadow-[0_4px_16px_-4px_rgba(225,6,0,0.9)]" : "text-fg-3 hover:bg-ink-3 hover:text-fg"}`}
+              >
+                <span className={`inline-block ${mode === m.id ? "skew-x-6" : ""}`}>
+                  <span className={`mr-1.5 text-[12px] font-bold ${mode === m.id ? "text-white/70" : "text-fg-3"}`}>{m.key}</span>
+                  <span className="hidden 2xl:inline">{m.label}</span>
+                  <span className="2xl:hidden">{m.short}</span>
+                </span>
+              </button>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-3">
+            <SessionPicker />
+            <Account />
+          </div>
         </div>
+        <div className="stripe" />
       </header>
       <main className="min-h-0 flex-1">
         {info.isError && <ErrorNote error={info.error} />}

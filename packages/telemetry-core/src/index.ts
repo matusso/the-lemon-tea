@@ -12,3 +12,4 @@ export * from "./qualifying.ts";
 export * from "./racepace.ts";
 export * from "./strategy.ts";
 export * from "./dominance.ts";
+export * from "./aero.ts";

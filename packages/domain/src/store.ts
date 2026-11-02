@@ -217,5 +217,10 @@ export interface IngestStore {
   writeCarSamples(uid: string, driverNumber: number, s: CarSamples): Promise<number>;
   writePositionSamples(uid: string, driverNumber: number, s: PositionSamples): Promise<number>;
   markIngested(uid: string, status: "partial" | "complete" | "failed", channels: string[]): Promise<void>;
+  /**
+   * Removes calendar-only rows (never ingested) of the same owner, meeting and session type as
+   * `keepId`: a pre-race placeholder is superseded once the real session is loaded.
+   */
+  removeSupersededSessions(owner: string | null, meetingId: string, type: string, keepId: string): Promise<number>;
   saveQualityReport(uid: string, processingVersion: string, report: Record<string, unknown>): Promise<void>;
 }

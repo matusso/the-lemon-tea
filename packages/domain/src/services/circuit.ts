@@ -147,7 +147,17 @@ export class CircuitService {
   private traceFrom(s: AuthorizedSession, car: CarSamples, pos: PositionSamples, driverNumber: number, lapNumber: number, startMs: number, lapTime: number) {
     const { trace, integratedLength } = buildLapTrace(car, pos, { sessionId: s.id, driverNumber, lapNumber, lapStartMs: startMs, lapTime, stepMetres: 5 });
     const check = checkLapGeometry(trace, integratedLength);
-    const z = trace.time.map((sec) => interpLinearClamped(pos.t, pos.z, startMs + sec * 1000));
+    // The feed encodes a missing z as 0: interpolate only between real elevation samples.
+    const zt: number[] = [];
+    const zv: number[] = [];
+    pos.t.forEach((t, i) => {
+      const v = pos.z[i]!;
+      if (Number.isFinite(v) && v !== 0) {
+        zt.push(t);
+        zv.push(v);
+      }
+    });
+    const z = zt.length >= 2 ? trace.time.map((sec) => interpLinearClamped(zt, zv, startMs + sec * 1000)) : trace.time.map(() => Number.NaN);
     return { trace, z, check };
   }
 

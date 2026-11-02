@@ -356,7 +356,7 @@ export default function Performance() {
           {deg.isPending ? "…" : "Tyre degradation"}
         </Btn>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-px bg-line xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 panes xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Frame title={<>Qualifying forecast <KindBadge kind="estimated" /></>}>
           {quali.isError && <ErrorNote error={quali.error} />}
           {quali.data ? <Quali q={quali.data} /> : !quali.isError && <Empty>Run “Predict qualifying” using the selected practice sessions.</Empty>}

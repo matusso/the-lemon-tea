@@ -114,7 +114,9 @@ export class IngestionService {
     await this.store.saveQualityReport(uid, INGEST_PROCESSING_VERSION, quality);
     const complete = q.channels.length === 3 && quality.driversWithoutCarData.length === 0;
     await this.store.markIngested(uid, complete ? "complete" : "partial", q.channels);
-    await this.registerUpcoming(provider, source, key, bundle, owner);
+    // a pre-race placeholder of this session (same meeting and type) is replaced by the real one
+    await this.store.removeSupersededSessions(owner, bundle.session.meetingId, bundle.session.type, bundle.session.id);
+    await this.registerUpcoming(ctx, provider, source, key, bundle, owner);
     return { sessionId: q.sessionId, owner: owner ? "private" : "public", drivers: bundle.drivers.length, laps: bundle.laps.length, carSamples: car, positionSamples: pos, quality };
   }
 
@@ -124,23 +126,54 @@ export class IngestionService {
    * the meeting and circuit of the session just loaded; no data is stored for them. Best effort:
    * a calendar lookup failure never fails the ingest.
    */
-  private async registerUpcoming(provider: ProviderAdapter, source: string, key: string, bundle: SessionBundle, owner: string | null): Promise<void> {
+  private async registerUpcoming(ctx: AuthContext, provider: ProviderAdapter, source: string, key: string, bundle: SessionBundle, owner: string | null): Promise<void> {
     try {
-      const listings = await provider.listSessions(bundle.session.year);
+      const year = bundle.session.year;
+      const listings = await provider.listSessions(year);
       const me = listings.find((l) => l.sessionKey === key);
       if (!me) return;
-      const upcoming = listings.filter((l) => l.meetingKey === me.meetingKey && l.sessionKey !== key && Date.parse(l.dateStart) > Date.now());
-      for (const l of upcoming) {
+      const ours = listings.filter((l) => l.meetingKey === me.meetingKey);
+      const register = async (id: string, name: string, type: SessionType, dateStart: string, dateEnd: string | null) => {
+        await this.store.upsertSession(owner, { meeting: bundle.meeting, session: { ...bundle.session, id: `${source}:${id}`, name, type, dateStart, dateEnd } });
+      };
+      for (const l of ours.filter((x) => x.sessionKey !== key && Date.parse(x.dateStart) > Date.now())) {
         const type = SessionType.safeParse(l.type);
-        if (!type.success) continue;
-        await this.store.upsertSession(owner, {
-          meeting: bundle.meeting,
-          session: { ...bundle.session, id: `${source}:${l.sessionKey}`, name: l.name, type: type.data, dateStart: l.dateStart, dateEnd: l.dateEnd },
-        });
+        if (type.success) await register(l.sessionKey, l.name, type.data, l.dateStart, l.dateEnd);
+      }
+      // Some calendars (F1 live timing) only list a session once it starts. The race and sprint are
+      // then taken from the season calendar and registered under a placeholder key that the
+      // provider resolves to the real session when it is published.
+      if (!provider.pendingSessionKey) return;
+      const listed = new Set(ours.map((l) => l.type));
+      const weekendStart = Math.min(...ours.map((l) => Date.parse(l.dateStart)));
+      for (const c of await this.seasonCalendar(ctx, year)) {
+        const t = Date.parse(c.dateStart);
+        if ((c.type !== "race" && c.type !== "sprint") || listed.has(c.type) || t <= Date.now()) continue;
+        if (t < weekendStart || t > weekendStart + 4 * 86_400_000) continue; // another weekend
+        const hours = c.type === "race" ? 2 : 1;
+        await register(provider.pendingSessionKey(year, me.meetingKey, c.type), c.type === "race" ? "Race" : "Sprint", c.type, new Date(t).toISOString(), new Date(t + hours * 3_600_000).toISOString());
       }
     } catch {
       // calendar unavailable: upcoming sessions appear once they are loaded themselves
     }
+  }
+
+  /** Race and sprint start times of a season from the public calendar provider (empty if unavailable). */
+  private async seasonCalendar(ctx: AuthContext, year: number): Promise<{ type: string; dateStart: string }[]> {
+    try {
+      return (await this.providers.resolve("jolpica", ctx.tenantId).listSessions(year)).map((l) => ({ type: l.type, dateStart: l.dateStart }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Re-registers the not-yet-started sessions of the meeting of an already loaded session (e.g.
+   * for weekends loaded before the race could be placed in the calendar).
+   */
+  async registerUpcomingFor(ctx: AuthContext, sessionId: string, bundle: SessionBundle, owner: string | null): Promise<void> {
+    const [source, key] = sessionId.split(":") as [string, string];
+    await this.registerUpcoming(ctx, this.providers.resolve(source, ctx.tenantId), source, key, bundle, owner);
   }
 
   /**

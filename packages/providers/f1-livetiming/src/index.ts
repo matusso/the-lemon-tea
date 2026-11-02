@@ -65,6 +65,17 @@ interface IndexMeeting {
   Sessions: IndexSession[];
 }
 
+/**
+ * Key of a session that F1 has not published yet: "<year>-m<meeting key>-<session type>", e.g.
+ * "2026-m1290-race". The live timing index only lists sessions once they start, so a race is
+ * registered under such a key before the weekend's Sunday; it resolves to the real key later.
+ */
+const PENDING_KEY = /^(\d{4})-m(\d+)-([a-z_]+)$/;
+
+export function pendingSessionKey(year: number, meetingKey: string | number, type: SessionType): string {
+  return `${year}-m${meetingKey}-${type}`;
+}
+
 export function sessionTypeFromLiveTiming(type: string, name: string): SessionType {
   const n = name.toLowerCase();
   if (n.includes("sprint") && (n.includes("qualifying") || n.includes("shootout"))) return "sprint_qualifying";
@@ -206,8 +217,8 @@ export class F1LiveTimingProvider implements ProviderAdapter {
     return records;
   }
 
-  private async index(year: number): Promise<IndexMeeting[]> {
-    const hit = this.indexCache.get(year);
+  private async index(year: number, fresh = false): Promise<IndexMeeting[]> {
+    const hit = fresh ? undefined : this.indexCache.get(year);
     if (hit) return hit;
     const raw = await this.getText(`/static/${year}/Index.json`);
     const doc = raw ? (JSON.parse(raw) as { Meetings?: IndexMeeting[] }) : {};
@@ -218,14 +229,25 @@ export class F1LiveTimingProvider implements ProviderAdapter {
 
   /** Session keys are "<year>-<F1 session key>", e.g. "2025-9908" (keys match OpenF1's session_key). */
   private async locate(sessionKey: string): Promise<{ year: number; meeting: IndexMeeting; session: IndexSession; path: string }> {
-    const m = /^(\d{4})-(\d+)$/.exec(sessionKey);
+    const pending = PENDING_KEY.exec(sessionKey);
+    const m = pending ?? /^(\d{4})-(\d+)$/.exec(sessionKey);
     if (!m) throw new Error(`Invalid live timing session key '${sessionKey}' (expected <year>-<key>)`);
     const year = Number(m[1]);
-    for (const meeting of await this.index(year)) {
-      const session = meeting.Sessions?.find((s) => String(s.Key) === m[2]);
-      if (session) return { year, meeting, session, path: session.Path ?? makePath(meeting, session) };
+    const match = (meeting: IndexMeeting, s: IndexSession) =>
+      pending ? String(meeting.Key) === pending[2] && sessionTypeFromLiveTiming(s.Type, s.Name) === pending[3] : String(s.Key) === m[2];
+    // the index is cached; a session that started since then needs a fresh copy
+    for (const fresh of [false, true]) {
+      for (const meeting of await this.index(year, fresh)) {
+        const session = meeting.Sessions?.find((s) => s.Key > 0 && match(meeting, s));
+        if (session) return { year, meeting, session, path: session.Path ?? makePath(meeting, session) };
+      }
     }
+    if (pending) throw new Error(`Live timing has not published session ${sessionKey} yet (it appears once the session starts)`);
     throw new Error(`Live timing session ${sessionKey} not found in the ${year} index`);
+  }
+
+  pendingSessionKey(year: number, meetingKey: string, type: string): string {
+    return pendingSessionKey(year, meetingKey, type as SessionType);
   }
 
   async listSessions(year: number): Promise<SessionListing[]> {
@@ -366,7 +388,8 @@ export class F1LiveTimingProvider implements ProviderAdapter {
 
   /** Live data comes from the SignalR feed; one connection per provider instance (per tenant). */
   async pollLive(sessionKey: string, _cursor: string | null): Promise<LiveDelta> {
-    const m = /^(\d{4})-(\d+)$/.exec(sessionKey);
+    const pending = PENDING_KEY.exec(sessionKey);
+    const m = pending ?? /^(\d{4})-(\d+)$/.exec(sessionKey);
     if (!m) throw new Error(`Invalid live timing session key '${sessionKey}'`);
     if (!this.live) {
       const feed = new F1LiveFeed({
@@ -378,7 +401,13 @@ export class F1LiveTimingProvider implements ProviderAdapter {
       this.live = feed;
     }
     try {
-      return await this.live.drain(Number(m[2]));
+      if (!pending) return await this.live.drain(Number(m[2]));
+      // A placeholder race follows whatever F1 is broadcasting, once that is this meeting's session.
+      const info = this.live.sessionInfo;
+      if (info && (String(info.meetingKey) !== pending[2] || sessionTypeFromLiveTiming(info.type, info.name) !== pending[3])) {
+        throw new Error(`F1 live timing is broadcasting ${info.name} (meeting ${info.meetingKey}), not this session yet`);
+      }
+      return await this.live.drain(info?.key ?? null);
     } catch (e) {
       // A dropped connection is rebuilt on the coordinator's next (backed-off) poll.
       if (/connection closed/i.test((e as Error).message)) await this.close();
