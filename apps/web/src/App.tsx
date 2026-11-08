@@ -24,16 +24,69 @@ const MODES: { id: Mode; label: string; short: string; key: string }[] = [
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2.5 pr-4">
-      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden className="drop-shadow-[0_0_6px_rgba(255,209,46,0.45)]">
-        <circle cx="16" cy="16" r="12" fill="#ffd12e" />
-        <circle cx="16" cy="16" r="9.5" fill="#0b0c12" />
-        <path d="M16 7.5v17M7.5 16h17M10 10l12 12M22 10 10 22" stroke="#ffd12e" strokeWidth="1.4" opacity=".85" />
-        <circle cx="16" cy="16" r="2.2" fill="#e10600" />
+    <div className="flex items-center gap-2 pr-3">
+      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden>
+        <circle cx="16" cy="16" r="13" fill="#e10600" />
+        <circle cx="16" cy="16" r="9.5" fill="#070709" />
+        <path d="M16 7.5v17M7.5 16h17M10 10l12 12M22 10 10 22" stroke="#ffd12e" strokeWidth="1.5" />
+        <circle cx="16" cy="16" r="2.2" fill="#ffd12e" />
       </svg>
-      <span className="display whitespace-nowrap text-[18px] leading-none tracking-[0.06em] text-fg">
+      <span className="display whitespace-nowrap text-[16px] italic tracking-[0.02em] text-fg">
         Lemon<span className="text-f1">Tea</span>
       </span>
+    </div>
+  );
+}
+
+const MONTH = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+/** "24-26 OCT 2026" / "30 APR - 02 MAY 2027", as on the intro cards. */
+function weekendDates(startIso: string, endIso: string): string {
+  const a = new Date(startIso);
+  const b = new Date(endIso);
+  const dd = (d: Date) => String(d.getDate()).padStart(2, "0");
+  if (a.getMonth() === b.getMonth()) return `${dd(a)}-${dd(b)} ${MONTH[b.getMonth()]} ${b.getFullYear()}`;
+  return `${dd(a)} ${MONTH[a.getMonth()]} - ${dd(b)} ${MONTH[b.getMonth()]} ${b.getFullYear()}`;
+}
+
+/** Weekend title card: round, venue script, dates, meeting name over outlined ghost lettering. */
+function WeekendBand() {
+  const { year, meetingId } = useUi();
+  const meetings = useQuery({ queryKey: ["meetings", year], queryFn: () => get.meetings(year!), enabled: year !== null });
+  const sessions = useQuery({ queryKey: ["sessions", meetingId], queryFn: () => get.sessions(meetingId!, false), enabled: !!meetingId });
+  const m = meetings.data?.find((x) => x.id === meetingId);
+  const rounds = [...(meetings.data ?? [])].filter((x) => !/test/i.test(x.name)).sort((a, b) => a.dateStart.localeCompare(b.dateStart));
+  const round = m ? rounds.findIndex((x) => x.id === m.id) + 1 : 0;
+  const ss = sessions.data ?? [];
+  const start = ss.length ? ss.reduce((a, x) => (x.dateStart < a ? x.dateStart : a), ss[0]!.dateStart) : m?.dateStart;
+  const end = ss.length ? ss.reduce((a, x) => ((x.dateEnd ?? x.dateStart) > a ? (x.dateEnd ?? x.dateStart) : a), ss[0]!.dateEnd ?? ss[0]!.dateStart) : m?.dateStart;
+  const sprint = ss.some((x) => x.type === "sprint");
+  const name = (m?.name ?? "").replace(/\s*Grand Prix$/i, "");
+  return (
+    <div className="relative flex h-[68px] items-center gap-5 overflow-hidden border-b border-line px-4">
+      {m && (
+        <span aria-hidden className="ghost absolute -bottom-3 right-[22%] text-[110px]">
+          {name}
+        </span>
+      )}
+      <div className="relative flex shrink-0 flex-col gap-1.5">
+        <span className="label !text-fg">{round > 0 ? `Round ${String(round).padStart(2, "0")}` : "Round —"}</span>
+        {sprint ? <span className="tag">Sprint</span> : <span className="h-[18px]" />}
+      </div>
+      {m ? (
+        <div className="relative flex min-w-0 items-baseline gap-5">
+          <span className="script hidden translate-y-1 whitespace-nowrap text-[34px] xl:inline">{m.circuitShortName}</span>
+          {start && end && <span className="date hidden whitespace-nowrap text-[15px] text-fg lg:inline">{weekendDates(start, end)}</span>}
+          <span className="display truncate text-[30px]">
+            {name}
+            {/grand prix/i.test(m.name) && <span className="ml-2 align-middle text-[12px] tracking-[0.14em] text-fg-3">Grand Prix</span>}
+          </span>
+        </div>
+      ) : (
+        <span className="relative text-fg-3">Pick a season and race weekend →</span>
+      )}
+      <div className="relative ml-auto">
+        <SessionPicker />
+      </div>
     </div>
   );
 }
@@ -124,7 +177,7 @@ function SettingsDialog({ email, role, onClose }: { email: string; role: string;
     <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/60 p-6 pt-20 backdrop-blur-sm" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" aria-label="Settings" className="max-h-[85vh] w-[560px] max-w-full overflow-y-auto rounded-xl border border-line-2 bg-ink-1 shadow-2xl">
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
-          <span className="text-[17px] font-semibold">Settings</span>
+          <span className="display text-[16px]">Settings</span>
           <button className="text-fg-3 hover:text-fg" onClick={onClose} aria-label="Close settings">
             ✕
           </button>
@@ -171,7 +224,7 @@ function Account() {
           aria-expanded={open}
           className={`flex h-8 items-center gap-2 rounded-full border pl-1 pr-2.5 transition-colors ${open ? "border-f1 bg-f1/10" : "border-line-2 hover:border-fg-3"}`}
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-f1 text-[13px] font-bold uppercase text-white">{userEmail.slice(0, 1) || "?"}</span>
+          <span className="display flex h-6 w-6 items-center justify-center rounded-full bg-f1 text-[12px] text-white">{userEmail.slice(0, 1) || "?"}</span>
           <span className="max-w-40 truncate text-[14px] text-fg-2">{userEmail}</span>
           <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden className="text-fg-3">
             <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -230,7 +283,7 @@ function Account() {
           <div className="label mb-1">Password</div>
           <input className="mb-3 w-full" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
           {err && <div className="mb-2 text-[14px] text-bad">{err}</div>}
-          <button className="h-9 w-full rounded bg-f1 text-[15px] font-semibold text-white hover:bg-f1-hi" type="submit">
+          <button className="display h-9 w-full rounded bg-f1 text-[13px] tracking-[0.06em] text-white hover:bg-f1-hi" type="submit">
             Sign in
           </button>
         </form>
@@ -243,7 +296,7 @@ function Footer() {
   const sessionId = useUi((s) => s.sessionId);
   const info = useInfo(sessionId);
   return (
-    <footer className="flex h-7 shrink-0 items-center justify-between gap-4 border-t border-line bg-ink-1/80 px-3 text-[12px] text-fg-3 backdrop-blur">
+    <footer className="flex h-7 shrink-0 items-center justify-between gap-4 border-t border-line bg-ink-0/80 px-4 text-[12px] text-fg-3 backdrop-blur">
       <span className="truncate">{info.data?.attribution ?? "Select a session"}</span>
       <span className="shrink-0">Independent open-source project · not affiliated with or endorsed by Formula 1</span>
     </footer>
@@ -268,31 +321,32 @@ export function App() {
 
   return (
     <div className="grid-bg flex h-full flex-col">
-      <header className="shrink-0 bg-ink-1/80 backdrop-blur">
-        <div className="flex h-14 items-center gap-3 px-3">
+      <header className="shrink-0 bg-ink-0/70 backdrop-blur">
+        <div className="flex h-12 items-center gap-4 border-b border-line px-4">
           <Brand />
-          <nav className="flex items-center gap-1 overflow-x-auto rounded-xl border border-line bg-ink-0/60 p-1">
+          <nav className="flex h-full items-stretch gap-1 overflow-x-auto" aria-label="Modes">
             {MODES.map((m, i) => (
               <button
                 key={m.id}
                 title={`${m.label} (Alt+${i + 1})`}
                 onClick={() => set({ mode: m.id })}
-                className={`h-9 whitespace-nowrap rounded-lg px-3 text-[14px] font-semibold tracking-wide transition-all ${mode === m.id ? "-skew-x-6 bg-gradient-to-b from-f1-hi to-f1 text-white shadow-[0_4px_16px_-4px_rgba(225,6,0,0.9)]" : "text-fg-3 hover:bg-ink-3 hover:text-fg"}`}
+                aria-current={mode === m.id ? "page" : undefined}
+                className={`group relative flex items-center gap-2 whitespace-nowrap px-3 transition-colors ${mode === m.id ? "text-fg" : "text-fg-3 hover:text-fg"}`}
               >
-                <span className={`inline-block ${mode === m.id ? "skew-x-6" : ""}`}>
-                  <span className={`mr-1.5 text-[12px] font-bold ${mode === m.id ? "text-white/70" : "text-fg-3"}`}>{m.key}</span>
+                <span className={`num text-[11px] ${mode === m.id ? "text-f1-hi" : "text-fg-3"}`}>{String(i + 1).padStart(2, "0")}</span>
+                <span className="label !text-[12px] !tracking-[0.12em] !text-current">
                   <span className="hidden 2xl:inline">{m.label}</span>
                   <span className="2xl:hidden">{m.short}</span>
                 </span>
+                <span aria-hidden className={`absolute inset-x-2 bottom-0 h-[3px] -skew-x-[20deg] transition-colors ${mode === m.id ? "bg-f1" : "bg-transparent group-hover:bg-line-2"}`} />
               </button>
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3">
-            <SessionPicker />
             <Account />
           </div>
         </div>
-        <div className="stripe" />
+        <WeekendBand />
       </header>
       <main className="min-h-0 flex-1">
         {info.isError && <ErrorNote error={info.error} />}
