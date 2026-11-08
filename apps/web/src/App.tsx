@@ -205,7 +205,7 @@ function Account() {
     );
   }
   return (
-    <div className="relative">
+    <div ref={menu} className="relative">
       <Btn variant="primary" onClick={() => setOpen(!open)}>
         Sign in
       </Btn>
