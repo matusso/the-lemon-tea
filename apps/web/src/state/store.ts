@@ -3,6 +3,13 @@ import { create } from "zustand";
 export type Mode = "command" | "lab" | "intel" | "strategy" | "research";
 export type CameraMode = "top" | "iso" | "orbit" | "follow" | "corner";
 export type Overlay = "none" | "delta" | "speed" | "throttle" | "brake";
+/** Optional 3D/2D map layers. */
+export interface MapLayers {
+  scenery: boolean;
+  sectors: boolean;
+  drs: boolean;
+  trap: boolean;
+}
 
 export interface LapPick {
   sessionId: string | null;
@@ -24,6 +31,7 @@ interface UiState {
   focusCorner: number | null;
   overlay: Overlay;
   elevationExaggeration: number;
+  layers: MapLayers;
   lapA: LapPick;
   lapB: LapPick;
   set: (p: Partial<UiState>) => void;
@@ -54,6 +62,7 @@ export const useUi = create<UiState>((set, get) => ({
   focusCorner: null,
   overlay: "delta",
   elevationExaggeration: 1,
+  layers: { scenery: true, sectors: true, drs: true, trap: true, ...(persisted.layers ?? {}) },
   lapA: { sessionId: null, driverNumber: null, lapNumber: null },
   lapB: { sessionId: null, driverNumber: null, lapNumber: null },
   set: (p) => set(p),
@@ -67,7 +76,7 @@ export const useUi = create<UiState>((set, get) => ({
 
 useUi.subscribe((s) => {
   try {
-    localStorage.setItem("lt:ui", JSON.stringify({ mode: s.mode, year: s.year, meetingId: s.meetingId, sessionId: s.sessionId }));
+    localStorage.setItem("lt:ui", JSON.stringify({ mode: s.mode, year: s.year, meetingId: s.meetingId, sessionId: s.sessionId, layers: s.layers }));
   } catch {
     // storage unavailable (private mode): selection simply isn't remembered
   }

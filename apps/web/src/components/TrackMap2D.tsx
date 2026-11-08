@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { nearestDistance, pointAtDistance } from "@lemon-tea/circuit-engine";
 import type { CircuitResponse, CompareResponse } from "../api";
 import { useUi } from "../state/store";
-import { COLOR_A, COLOR_B } from "./TelemetryCharts";
+import { COLOR_A, COLOR_B, DRS_COLOR, SECTOR_COLORS } from "./TelemetryCharts";
+import { drsZones, inSpan, sectorOf, speedTrapIndex } from "../modes/command/circuitFeatures";
 
 /**
  * 2D map: derived centreline, both drivers' measured trajectories (from the comparison traces),
@@ -10,7 +11,7 @@ import { COLOR_A, COLOR_B } from "./TelemetryCharts";
  */
 export function TrackMap2D({ circuit, cmp }: { circuit: CircuitResponse; cmp: CompareResponse | undefined }) {
   const geo = circuit.geometry;
-  const { cursorDistance, set } = useUi();
+  const { cursorDistance, set, layers } = useUi();
   const L = geo.distance[geo.distance.length - 1]!;
   const refL = cmp?.reference_length_m ?? L;
 
@@ -24,6 +25,31 @@ export function TrackMap2D({ circuit, cmp }: { circuit: CircuitResponse; cmp: Co
 
   const path = (xs: number[], ys: number[]) => xs.map((x, i) => `${i ? "L" : "M"}${x.toFixed(1)},${(-ys[i]!).toFixed(1)}`).join("");
   const center = useMemo(() => path(geo.x, geo.y), [geo]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Sector-coloured centreline pieces and estimated DRS / straight-mode zones (see circuitFeatures).
+  const sectors = useMemo(() => {
+    const out: { d: string; k: number }[] = [];
+    let from = 0;
+    for (let i = 1; i <= geo.x.length; i++) {
+      const k = sectorOf(geo, geo.distance[from]!);
+      if (i === geo.x.length || sectorOf(geo, geo.distance[i]!) !== k) {
+        const end = Math.min(i, geo.x.length - 1);
+        out.push({ d: path(geo.x.slice(from, end + 1), geo.y.slice(from, end + 1)), k });
+        from = i;
+      }
+    }
+    return out;
+  }, [geo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const drs = useMemo(
+    () =>
+      drsZones(geo).map((z) => {
+        const idx = geo.x.map((_, i) => i).filter((i) => inSpan(z, i));
+        // a zone wrapping past S/F: start from its own first index
+        const ordered = z.from <= z.to ? idx : [...idx.filter((i) => i >= z.from), ...idx.filter((i) => i <= z.to)];
+        return path(ordered.map((i) => geo.x[i]!), ordered.map((i) => geo.y[i]!));
+      }),
+    [geo], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const trapIdx = useMemo(() => speedTrapIndex(geo, cmp?.traces?.a), [geo, cmp]);
   const traj = (who: "a" | "b") => {
     const t = cmp?.traces?.[who];
     if (!t?.x || !t.y) return null;
@@ -61,8 +87,11 @@ export function TrackMap2D({ circuit, cmp }: { circuit: CircuitResponse; cmp: Co
         set({ cursorDistance: (d / L) * refL });
       }}
     >
+      {layers.drs && drs.map((d, i) => <path key={i} d={d} fill="none" stroke={DRS_COLOR} strokeOpacity={0.35} strokeWidth={sw * 17} strokeLinecap="butt" />)}
       <path d={center} fill="none" stroke="#3a3a49" strokeWidth={sw * 9} strokeLinejoin="round" strokeLinecap="round" />
-      <path d={center} fill="none" stroke="#5a5b6b" strokeWidth={sw * 1} strokeLinejoin="round" />
+      {layers.sectors
+        ? sectors.map((p, i) => <path key={i} d={p.d} fill="none" stroke={SECTOR_COLORS[p.k]} strokeOpacity={0.7} strokeWidth={sw * 1.5} strokeLinejoin="round" />)
+        : <path d={center} fill="none" stroke="#5a5b6b" strokeWidth={sw * 1} strokeLinejoin="round" />}
       {traj("a") && <path d={traj("a")!} fill="none" stroke={COLOR_A} strokeWidth={sw * 2} opacity={0.95} />}
       {traj("b") && <path d={traj("b")!} fill="none" stroke={COLOR_B} strokeWidth={sw * 2} opacity={0.95} strokeDasharray={`${sw * 5} ${sw * 3}`} />}
       {geo.corners.map((c) => (
@@ -71,6 +100,15 @@ export function TrackMap2D({ circuit, cmp }: { circuit: CircuitResponse; cmp: Co
         </text>
       ))}
       <circle cx={geo.startFinish.x} cy={-geo.startFinish.y} r={sw * 5} fill="#e10600" stroke="#fff" strokeWidth={sw * 1.2} />
+      {layers.trap && (
+        <g>
+          <title>Speed trap (estimated position)</title>
+          <rect x={geo.x[trapIdx]! - sw * 4} y={-geo.y[trapIdx]! - sw * 4} width={sw * 8} height={sw * 8} fill="#e10600" stroke="#fff" strokeWidth={sw} transform={`rotate(45 ${geo.x[trapIdx]!} ${-geo.y[trapIdx]!})`} />
+          <text x={geo.x[trapIdx]! + sw * 8} y={-geo.y[trapIdx]! - sw * 6} fill="#ffffff" fontSize={sw * 11} fontWeight={800} letterSpacing={sw * 1.2}>
+            TRAP
+          </text>
+        </g>
+      )}
       {cur && <circle cx={cur.x} cy={-cur.y} r={sw * 7} fill="none" stroke="#ffffff" strokeWidth={sw * 2} />}
     </svg>
   );

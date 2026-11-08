@@ -6,7 +6,7 @@ import { get } from "../api";
 import { useBundle, useCircuit, useInfo, useSelectionCompare } from "../data";
 import { isLiveWindow, useLiveFeed, type LiveStatus } from "../state/live";
 import { clock } from "../state/clock";
-import { useUi, type CameraMode, type Overlay } from "../state/store";
+import { useUi, type CameraMode, type MapLayers, type Overlay } from "../state/store";
 import { Btn, Empty, ErrorNote, Frame, KindBadge, Loading } from "../components/ui";
 import { TelemetryStack } from "../components/TelemetryCharts";
 import { TimingTower } from "./command/TimingTower";
@@ -46,11 +46,18 @@ const CAMERAS: { id: CameraMode; label: string }[] = [
   { id: "follow", label: "Follow A" },
 ];
 const OVERLAYS: { id: Overlay; label: string }[] = [
-  { id: "none", label: "Sectors" },
+  { id: "none", label: "Plain" },
   { id: "delta", label: "Δ gain" },
   { id: "speed", label: "Speed A" },
   { id: "throttle", label: "Throttle A" },
   { id: "brake", label: "Brake A" },
+];
+
+const LAYERS: { id: keyof MapLayers; label: string; title: string }[] = [
+  { id: "sectors", label: "Sectors", title: "Sector colour bands and boundaries" },
+  { id: "drs", label: "DRS", title: "Estimated DRS / straight-mode zones" },
+  { id: "trap", label: "Trap", title: "Speed trap (estimated position, measured speed)" },
+  { id: "scenery", label: "Scenery", title: "Illustrative pit building, grandstands, buildings and trees" },
 ];
 
 function LiveBadge({ status, follow, onFollow }: { status: LiveStatus; follow: boolean; onFollow: () => void }) {
@@ -73,7 +80,7 @@ function LiveBadge({ status, follow, onFollow }: { status: LiveStatus; follow: b
 }
 
 export default function CommandCenter({ active = true }: { active?: boolean }) {
-  const { sessionId, meetingId, camera, overlay, set, driverA, driverB, elevationExaggeration } = useUi();
+  const { sessionId, meetingId, camera, overlay, set, driverA, driverB, elevationExaggeration, layers } = useUi();
   const bundle = useBundle(sessionId);
   const circuit = useCircuit(sessionId);
   const cmp = useSelectionCompare();
@@ -222,7 +229,8 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                   </>
                 }
               >
-                <div className="relative h-full">
+                {/* `isolate` keeps the canvas's HTML labels in their own stacking context, under the app menus. */}
+                <div className="relative isolate h-full">
                   {circuit.isLoading && <Loading what="Deriving circuit geometry" />}
                   {circuit.isError && <ErrorNote error={circuit.error} />}
                   {circuit.data && <Circuit3D circuit={circuit.data} bundle={b} sessionId={sessionId} cmp={cmp.data} active={active} live={isLive ? feed.buffer : null} />}
@@ -244,6 +252,7 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                           <div>Driven line estimated from measured car positions.</div>
                           <div>Corners C1… are detected from speed, not official turn numbers. Ribbon width is visual only.</div>
                           <div>Markers interpolate between position samples (~4 Hz) and hide when no sample is within 2 s.</div>
+                          <div>DRS / straight-mode zones and the speed-trap position are estimated from the longest straights (the trap speed itself is measured). Buildings, stands and trees are illustrative, not mapped.</div>
                         </div>
                       )}
                     </div>
@@ -266,6 +275,13 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                           <span className="text-lemon">■ {cmp.data.a.driverCode} gaining</span> <span className="text-teal">■ {cmp.data.b.driverCode} gaining</span>
                         </span>
                       )}
+                      <span className="mx-1 h-4 w-px bg-line-2" />
+                      <span className="label mr-1">Layers</span>
+                      {LAYERS.map((l) => (
+                        <Btn key={l.id} active={layers[l.id]} onClick={() => set({ layers: { ...layers, [l.id]: !layers[l.id] } })} title={l.title}>
+                          {l.label}
+                        </Btn>
+                      ))}
                       {cmp.isLoading && <span className="text-[13px] text-fg-3">comparing…</span>}
                       {cmp.isError && <span className="text-[13px] text-bad">{(cmp.error as Error).message}</span>}
                       <span className="text-[13px] text-fg-3">· click track to set cursor</span>

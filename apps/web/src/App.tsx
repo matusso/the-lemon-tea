@@ -321,7 +321,9 @@ export function App() {
 
   return (
     <div className="grid-bg flex h-full flex-col">
-      <header className="shrink-0 bg-ink-0/70 backdrop-blur">
+      {/* backdrop-blur makes the header its own stacking context: lift it above <main> so its menus,
+          comboboxes and the Settings dialog are not painted under the map's overlays. */}
+      <header className="relative z-40 shrink-0 bg-ink-0/70 backdrop-blur">
         <div className="flex h-12 items-center gap-4 border-b border-line px-4">
           <Brand />
           <nav className="flex h-full items-stretch gap-1 overflow-x-auto" aria-label="Modes">
