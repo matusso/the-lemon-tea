@@ -2,11 +2,25 @@ import { useMemo, useState } from "react";
 import { timingTower, type TimingBundle, type TowerRow } from "@lemon-tea/synchronization";
 import { useClockTime } from "../../state/clock";
 import { useUi } from "../../state/store";
-import { dash, fmtLap, fmtNum, Frame, KindBadge, teamColor, Tyre } from "../../components/ui";
+import { Chooser, dash, fmtLap, fmtNum, Frame, KindBadge, teamColor, Tyre, useChoice } from "../../components/ui";
 
 type SortKey = "position" | "bestLap" | "lastLap" | "number";
 
-const STATUS: Record<string, string> = { running: "", in_pit: "PIT", retired: "OUT", not_started: "—", finished: "FIN" };
+const COLS = ["gap", "int", "last", "best", "sectors", "tyre", "pit", "gained", "trend"] as const;
+type Col = (typeof COLS)[number];
+const COL_LABEL: { id: Col; label: string; hint?: string }[] = [
+  { id: "gap", label: "Gap to leader" },
+  { id: "int", label: "Interval", hint: "car ahead" },
+  { id: "last", label: "Last lap" },
+  { id: "best", label: "Best lap" },
+  { id: "sectors", label: "Sectors S1–S3" },
+  { id: "tyre", label: "Tyre + age" },
+  { id: "pit", label: "Pit stops" },
+  { id: "gained", label: "Places gained", hint: "race" },
+  { id: "trend", label: "Pace trend" },
+];
+
+const STATUS: Record<string, string> = { running: "", in_pit: "PIT", retired: "OUT", not_started: "", finished: "FIN" };
 
 function trendArrow(t: number | null) {
   if (t === null) return <span className="text-fg-3">·</span>;
@@ -21,6 +35,8 @@ export function TimingTower({ bundle }: { bundle: TimingBundle }) {
   const { driverA, driverB, pinned, selectDriver, togglePin } = useUi();
   const [sort, setSort] = useState<SortKey>("position");
   const [filter, setFilter] = useState("");
+  const [cols, setCols] = useChoice<Col>("lt:tower-cols", COLS, ["gap", "int", "last", "best", "tyre", "pit", "gained"]);
+  const show = (c: Col) => cols.includes(c);
   const rows = useMemo(() => timingTower(bundle, t), [bundle, t]);
 
   const best = useMemo(() => {
@@ -40,7 +56,7 @@ export function TimingTower({ bundle }: { bundle: TimingBundle }) {
 
   const isRace = bundle.sessionType === "race" || bundle.sessionType === "sprint";
   const th = (k: SortKey, label: string, cls = "") => (
-    <th className={`cursor-pointer px-1 py-1 font-medium ${sort === k ? "text-lemon" : ""} ${cls}`} onClick={() => setSort(k)}>
+    <th className={`cursor-pointer px-1.5 py-2 font-bold ${sort === k ? "text-f1-hi" : ""} ${cls}`} onClick={() => setSort(k)} aria-sort={sort === k ? "ascending" : undefined}>
       {label}
     </th>
   );
@@ -54,70 +70,85 @@ export function TimingTower({ bundle }: { bundle: TimingBundle }) {
     <Frame
       title={
         <>
-          Timing tower <KindBadge kind={isRace ? "measured" : "calculated"} title={isRace ? "Gaps from the source interval feed" : "Order and gaps calculated from best laps"} />
+          Timing <KindBadge kind={isRace ? "measured" : "calculated"} title={isRace ? "Gaps from the source interval feed" : "Order and gaps calculated from best laps"} />
         </>
       }
-      right={<input type="text" placeholder="filter" className="w-20" value={filter} onChange={(e) => setFilter(e.target.value)} />}
+      right={
+        <>
+          <input type="text" placeholder="Filter" aria-label="Filter drivers" className="w-20 !py-0.5" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <Chooser label="Columns" options={COL_LABEL} value={cols} onChange={setCols} />
+        </>
+      }
     >
       <table className="num w-full border-collapse text-[14px]">
-        <thead className="sticky top-0 z-10 bg-ink-1 text-left text-[12px] uppercase tracking-wider text-fg-3">
-          <tr>
-            {th("position", "P", "w-6 text-right")}
+        <thead className="label sticky top-0 z-10 bg-ink-1 text-left !text-[10px]">
+          <tr className="border-b border-line">
+            {th("position", "Pos", "w-9 pl-3 text-right")}
             {th("number", "Driver")}
-            <th className="px-1 text-right">{isRace ? "Gap" : "Gap"}</th>
-            <th className="px-1 text-right">Int</th>
-            {th("lastLap", "Last", "text-right")}
-            {th("bestLap", "Best", "text-right")}
-            <th className="px-1 text-right">S1</th>
-            <th className="px-1 text-right">S2</th>
-            <th className="px-1 text-right">S3</th>
-            <th className="px-1">Tyre</th>
-            <th className="px-1 text-right">Pit</th>
-            {isRace && <th className="px-1 text-right">±</th>}
-            <th className="px-1">Tr</th>
+            {show("gap") && <th className="px-1.5 text-right">Gap</th>}
+            {show("int") && <th className="px-1.5 text-right">Int</th>}
+            {show("last") && th("lastLap", "Last", "text-right")}
+            {show("best") && th("bestLap", "Best", "text-right")}
+            {show("sectors") && (
+              <>
+                <th className="px-1.5 text-right">S1</th>
+                <th className="px-1.5 text-right">S2</th>
+                <th className="px-1.5 text-right">S3</th>
+              </>
+            )}
+            {show("tyre") && <th className="px-1.5">Tyre</th>}
+            {show("pit") && <th className="px-1.5 text-right">Pit</th>}
+            {isRace && show("gained") && <th className="px-1.5 text-right">+/−</th>}
+            {show("trend") && <th className="px-1.5 pr-3 text-center">Trend</th>}
           </tr>
         </thead>
         <tbody>
           {shown.map((r) => {
             const selA = driverA === r.driverNumber;
             const selB = driverB === r.driverNumber;
+            const tc = teamColor(r.teamColour);
             return (
               <tr
                 key={r.driverNumber}
                 onClick={(e) => selectDriver(r.driverNumber, e.metaKey || e.ctrlKey || e.shiftKey)}
                 onDoubleClick={() => togglePin(r.driverNumber)}
-                className={`cursor-pointer border-b border-line/40 transition-colors even:bg-white/[0.015] hover:bg-ink-3 ${selA ? "bg-lemon/10" : selB ? "bg-teal/10" : ""} ${r.status === "retired" ? "opacity-50" : ""}`}
+                className={`h-9 cursor-pointer border-b border-line/60 transition-colors hover:bg-ink-3 ${selA ? "bg-lemon/[0.09] shadow-[inset_3px_0_0_var(--color-lemon)]" : selB ? "bg-teal/[0.09] shadow-[inset_3px_0_0_var(--color-teal)]" : ""} ${r.status === "retired" ? "opacity-45" : ""}`}
                 title="Click: driver A · Ctrl/Cmd/Shift-click: driver B · Double-click: pin"
               >
-                <td className={`display px-1 py-[3px] text-right text-[15px] ${r.position !== null && r.position <= 3 ? "text-lemon" : "text-fg"}`}>{r.position ?? dash}</td>
-                <td className="px-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-4 w-1 -skew-x-12 rounded-[1px]" style={{ background: teamColor(r.teamColour), boxShadow: `0 0 6px ${teamColor(r.teamColour)}88` }} />
-                    <span className="w-5 text-right text-fg-3">{r.driverNumber}</span>
-                    <span className={`font-bold ${selA ? "text-lemon" : selB ? "text-teal" : "text-fg"}`}>{r.code}</span>
-                    {pinned.includes(r.driverNumber) && <span className="text-lemon">•</span>}
-                    {STATUS[r.status] && <span className="rounded bg-ink-3 px-1 text-[12px] text-fg-2">{STATUS[r.status]}</span>}
+                <td className="pl-3 pr-1.5 text-right">
+                  <span className={`display text-[16px] ${r.position === 1 ? "text-f1-hi" : "text-fg"}`}>{r.position ?? dash}</span>
+                </td>
+                <td className="px-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-5 w-[5px] -skew-x-[20deg]" style={{ background: tc }} />
+                    <span className={`display w-12 text-[14px] tracking-[0.02em] ${selA ? "text-lemon" : selB ? "text-teal" : "text-fg"}`}>{r.code}</span>
+                    <span className="w-6 text-[12px] text-fg-3">{r.driverNumber}</span>
+                    {pinned.includes(r.driverNumber) && <span className="text-lemon" title="Pinned">●</span>}
+                    {STATUS[r.status] && <span className={`tag !h-4 !text-[9px] ${r.status === "in_pit" ? "" : "!bg-ink-3 !text-fg-2"}`}>{STATUS[r.status]}</span>}
                   </div>
                 </td>
-                <td className="px-1 text-right text-fg-2">{r.lapsDown ? `+${r.lapsDown}L` : r.position === 1 ? "—" : fmtNum(r.gapToLeader, 3, true)}</td>
-                <td className="px-1 text-right text-fg-2">{fmtNum(r.interval, 3, true)}</td>
-                <td className="px-1 text-right">{fmtLap(r.lastLap)}</td>
-                <td className={`px-1 text-right ${r.bestLap !== null && r.bestLap <= best.lap + 1e-9 ? "text-purple" : ""}`}>{fmtLap(r.bestLap)}</td>
-                {[0, 1, 2].map((i) => (
-                  <td key={i} className="px-1 text-right">
-                    {sec(r.sectors[i as 0 | 1 | 2], r.bestSectors[i as 0 | 1 | 2], i)}
-                  </td>
-                ))}
-                <td className="px-1">
-                  <Tyre compound={r.compound} age={r.tyreAge} />
-                </td>
-                <td className="px-1 text-right text-fg-2">{r.pitStops}</td>
-                {isRace && (
-                  <td className={`px-1 text-right ${r.positionsGained && r.positionsGained > 0 ? "text-good" : r.positionsGained && r.positionsGained < 0 ? "text-bad" : "text-fg-3"}`}>
-                    {r.positionsGained ? (r.positionsGained > 0 ? `+${r.positionsGained}` : r.positionsGained) : dash}
+                {show("gap") && <td className="px-1.5 text-right text-fg">{r.lapsDown ? `+${r.lapsDown}L` : r.position === 1 ? <span className="label !text-[10px]">Leader</span> : fmtNum(r.gapToLeader, 3, true)}</td>}
+                {show("int") && <td className="px-1.5 text-right text-fg-2">{fmtNum(r.interval, 3, true)}</td>}
+                {show("last") && <td className="px-1.5 text-right">{fmtLap(r.lastLap)}</td>}
+                {show("best") && <td className={`px-1.5 text-right ${r.bestLap !== null && r.bestLap <= best.lap + 1e-9 ? "font-bold text-purple" : "text-fg-2"}`}>{fmtLap(r.bestLap)}</td>}
+                {show("sectors") &&
+                  [0, 1, 2].map((i) => (
+                    <td key={i} className="px-1.5 text-right text-[13px]">
+                      {sec(r.sectors[i as 0 | 1 | 2], r.bestSectors[i as 0 | 1 | 2], i)}
+                    </td>
+                  ))}
+                {show("tyre") && (
+                  <td className="px-1.5">
+                    <Tyre compound={r.compound} age={r.tyreAge} />
                   </td>
                 )}
-                <td className="px-1 text-center">{trendArrow(r.paceTrend)}</td>
+                {show("pit") && <td className="px-1.5 text-right text-fg-2">{r.pitStops}</td>}
+                {isRace && show("gained") && (
+                  <td className={`px-1.5 text-right ${r.positionsGained && r.positionsGained > 0 ? "text-good" : r.positionsGained && r.positionsGained < 0 ? "text-bad" : "text-fg-3"}`}>
+                    {r.positionsGained ? (r.positionsGained > 0 ? `▲${r.positionsGained}` : `▼${-r.positionsGained}`) : dash}
+                  </td>
+                )}
+                {show("trend") && <td className="px-1.5 pr-3 text-center">{trendArrow(r.paceTrend)}</td>}
               </tr>
             );
           })}

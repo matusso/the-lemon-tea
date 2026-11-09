@@ -108,6 +108,13 @@ export const StrategyStint = z.object({
 export const SimulateStrategyInput = z.object({
   sessionId: SessionId.describe("Race session for circuit/field context"),
   paceSessionIds: z.array(SessionId).max(6).optional().describe("Sessions used to estimate pace and degradation"),
+  gridSessionId: SessionId.optional().describe("Session whose classification sets the starting grid (default: qualifying, else race start order)"),
+  include: z
+    .object({
+      qualifyingPace: z.boolean().default(true).describe("Fuse one-lap pace from the grid session into driver race pace"),
+      degradationFit: z.boolean().default(true).describe("Fit tyre degradation from the pace sessions (false: model defaults)"),
+    })
+    .default({ qualifyingPace: true, degradationFit: true }),
   driverNumber: DriverNumber,
   totalLaps: z.number().int().min(5).max(100).optional(),
   strategies: z.array(z.object({ name: z.string().max(40), stints: z.array(StrategyStint).min(1).max(5) })).min(1).max(6),

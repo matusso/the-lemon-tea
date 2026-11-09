@@ -287,7 +287,12 @@ export class F1LiveTimingProvider implements ProviderAdapter {
     // Stream offsets are relative to the start of the recording. As in FastF1, the origin is the
     // latest (least delayed) value of Utc - offset over timestamped records.
     let t0 = timeOrigin(heartbeat.map((r) => ({ offsetMs: r.offsetMs, utc: isObject(r.data) ? parseUtc(r.data.Utc) : NaN })));
-    if (!Number.isFinite(t0)) t0 = (await this.loadCar(path)).t0;
+    const scheduled = Date.parse(localToUtc(session.StartDate, session.GmtOffset));
+    if (!Number.isFinite(t0) || (Number.isFinite(scheduled) && Math.abs(t0 - scheduled) > MAX_ORIGIN_DRIFT_MS)) {
+      const carT0 = (await this.loadCar(path)).t0;
+      if (Number.isFinite(t0)) this.quality.heartbeatOriginRejected = { heartbeatOrigin: new Date(t0).toISOString(), carDataOrigin: Number.isFinite(carT0) ? new Date(carT0).toISOString() : null };
+      t0 = carT0;
+    }
     if (!Number.isFinite(t0)) throw new Error("Could not determine the time origin of the live timing streams");
     const abs = (offset: number) => new Date(t0 + offset).toISOString();
 
@@ -429,14 +434,25 @@ export function makePath(meeting: IndexMeeting, session: IndexSession): string {
   return `${wdate.slice(0, 4)}/${wdate} ${meeting.Name}/${sdate} ${session.Name}/`.replaceAll(" ", "_");
 }
 
+/** A record's Utc − offset above the median by more than this is corrupt, not "less delayed". */
+const ORIGIN_OUTLIER_MS = 30_000;
+
+/**
+ * Stream time origin: the latest (least delayed) Utc − offset. Delivery delay can only lower that
+ * value, so values far ABOVE the median are corrupt timestamps (seen in the archive: one bad Utc
+ * shifted a whole race by 33 h) and are ignored before taking the maximum.
+ */
 export function timeOrigin(rows: { offsetMs: number; utc: number }[]): number {
+  const vs = rows.map((r) => r.utc - r.offsetMs).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!vs.length) return NaN;
+  const median = vs[Math.floor((vs.length - 1) / 2)]!;
   let best = NaN;
-  for (const r of rows) {
-    const v = r.utc - r.offsetMs;
-    if (Number.isFinite(v) && (Number.isNaN(best) || v > best)) best = v;
-  }
-  return Number.isNaN(best) ? NaN : Math.round(best);
+  for (const v of vs) if (v <= median + ORIGIN_OUTLIER_MS && (Number.isNaN(best) || v > best)) best = v;
+  return Math.round(best);
 }
+
+/** Further than this from the scheduled start, a stream origin is rejected in favour of the car-data clock. */
+const MAX_ORIGIN_DRIFT_MS = 6 * 3600_000;
 
 export function parseDrivers(records: StreamRecord[]): Driver[] {
   const acc = new Map<string, JsonObject>();

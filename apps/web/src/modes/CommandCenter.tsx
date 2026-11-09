@@ -6,7 +6,7 @@ import { get } from "../api";
 import { useBundle, useCircuit, useInfo, useSelectionCompare } from "../data";
 import { isLiveWindow, useLiveFeed, type LiveStatus } from "../state/live";
 import { clock } from "../state/clock";
-import { useUi, type CameraMode, type Overlay } from "../state/store";
+import { useUi, type CameraMode, type MapLayers, type Overlay } from "../state/store";
 import { Btn, Empty, ErrorNote, Frame, KindBadge, Loading } from "../components/ui";
 import { TelemetryStack } from "../components/TelemetryCharts";
 import { TimingTower } from "./command/TimingTower";
@@ -46,11 +46,19 @@ const CAMERAS: { id: CameraMode; label: string }[] = [
   { id: "follow", label: "Follow A" },
 ];
 const OVERLAYS: { id: Overlay; label: string }[] = [
-  { id: "none", label: "Sectors" },
+  { id: "none", label: "Plain" },
   { id: "delta", label: "Δ gain" },
   { id: "speed", label: "Speed A" },
   { id: "throttle", label: "Throttle A" },
   { id: "brake", label: "Brake A" },
+];
+
+const LAYERS: { id: keyof MapLayers; label: string; title: string }[] = [
+  { id: "sectors", label: "Sectors", title: "Sector colour bands and boundaries" },
+  { id: "drs", label: "DRS", title: "Estimated DRS / straight-mode zones" },
+  { id: "trap", label: "Trap", title: "Speed trap (estimated position, measured speed)" },
+  { id: "apexes", label: "Apexes", title: "Geometric apexes (peak curvature of the driven line), inside marked; used by Battle Analysis" },
+  { id: "scenery", label: "Scenery", title: "Illustrative pit building, grandstands, buildings and trees" },
 ];
 
 function LiveBadge({ status, follow, onFollow }: { status: LiveStatus; follow: boolean; onFollow: () => void }) {
@@ -73,7 +81,7 @@ function LiveBadge({ status, follow, onFollow }: { status: LiveStatus; follow: b
 }
 
 export default function CommandCenter({ active = true }: { active?: boolean }) {
-  const { sessionId, meetingId, camera, overlay, set, driverA, driverB, elevationExaggeration } = useUi();
+  const { sessionId, meetingId, camera, overlay, set, driverA, driverB, elevationExaggeration, layers } = useUi();
   const bundle = useBundle(sessionId);
   const circuit = useCircuit(sessionId);
   const cmp = useSelectionCompare();
@@ -154,7 +162,17 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
   const persist = () => {
     if (cols.current && rows.current) save("lt:layout", { cols: cols.current.getLayout(), rows: rows.current.getLayout() });
   };
-  const toggle = (r: ReturnType<typeof usePanelRef>) => (r.current?.isCollapsed() ? r.current.expand() : r.current?.collapse());
+  const toggle = (r: ReturnType<typeof usePanelRef>) => {
+    if (r.current?.isCollapsed()) r.current.expand();
+    else r.current?.collapse();
+    syncOpen();
+  };
+  const [open, setOpen] = useState({ tower: true, intel: true, bottom: true });
+  const syncOpen = () =>
+    requestAnimationFrame(() =>
+      setOpen({ tower: !towerRef.current?.isCollapsed(), intel: !intelRef.current?.isCollapsed(), bottom: !bottomRef.current?.isCollapsed() }),
+    );
+  const [mapInfo, setMapInfo] = useState(false);
 
   if (!sessionId) return <Empty>Select a season, weekend and session in the top bar.</Empty>;
   if (bundle.isLoading) return <Loading what="Loading session timing" />;
@@ -163,32 +181,40 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-line/70 bg-ink-1/40 px-3 backdrop-blur">
-        <span className="label">Workspace</span>
+      <div className="flex h-11 shrink-0 items-center gap-2 overflow-x-auto px-4">
+        <span className="label mr-1">Layout</span>
         {(Object.keys(PRESETS) as Preset[]).map((p) => (
           <Btn key={p} active={preset === p} onClick={() => applyPreset(p)}>
             {p}
           </Btn>
         ))}
         <span className="mx-2 h-4 w-px bg-line" />
-        <Btn onClick={() => toggle(towerRef)}>Tower</Btn>
-        <Btn onClick={() => toggle(intelRef)}>Intel</Btn>
-        <Btn onClick={() => toggle(bottomRef)}>Timeline</Btn>
+        <span className="label mr-1">Panels</span>
+        <Btn active={open.tower} onClick={() => toggle(towerRef)} title="Show or hide the timing tower">
+          Tower
+        </Btn>
+        <Btn active={open.intel} onClick={() => toggle(intelRef)} title="Show or hide race intel">
+          Intel
+        </Btn>
+        <Btn active={open.bottom} onClick={() => toggle(bottomRef)} title="Show or hide timeline and telemetry">
+          Timeline
+        </Btn>
         {isLive && <span className="mx-2 h-4 w-px bg-line" />}
         {isLive && <LiveBadge status={feed.status} follow={follow} onFollow={() => setFollow(!follow)} />}
-        <span className="ml-auto text-[13px] text-fg-3">
+        <span className="ml-auto whitespace-nowrap text-[13px] text-fg-3">
           {driverA === null ? "Click a driver for A, Ctrl/Cmd-click for B" : driverB === null ? "Ctrl/Cmd-click a second driver to compare" : "Comparing fastest laps of A and B"}
         </span>
       </div>
-      <Group orientation="vertical" groupRef={rows} defaultLayout={initial.current.rows} onLayoutChanged={() => (setPreset("Custom"), persist())} className="min-h-0 flex-1 p-2">
+      <Group orientation="vertical" groupRef={rows} defaultLayout={initial.current.rows} onLayoutChanged={() => (setPreset("Custom"), persist(), syncOpen())} className="min-h-0 flex-1 px-2 pb-2">
         <Panel id="top" minSize="25%">
-          <Group orientation="horizontal" groupRef={cols} defaultLayout={initial.current.cols} onLayoutChanged={() => (setPreset("Custom"), persist())}>
+          <Group orientation="horizontal" groupRef={cols} defaultLayout={initial.current.cols} onLayoutChanged={() => (setPreset("Custom"), persist(), syncOpen())}>
             <Panel id="tower" panelRef={towerRef} collapsible minSize="15%" collapsedSize={0}>
               <TimingTower bundle={b} />
             </Panel>
             <Separator className="mx-[3px] w-[2px]" />
             <Panel id="center" minSize="25%">
               <Frame
+                hero
                 title={
                   <>
                     Circuit {circuit.data && <KindBadge kind="estimated" title="Driven line derived from measured positions" />}
@@ -204,24 +230,36 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                   </>
                 }
               >
-                <div className="relative h-full">
+                {/* `isolate` keeps the canvas's HTML labels in their own stacking context, under the app menus. */}
+                <div className="relative isolate h-full">
                   {circuit.isLoading && <Loading what="Deriving circuit geometry" />}
                   {circuit.isError && <ErrorNote error={circuit.error} />}
                   {circuit.data && <Circuit3D circuit={circuit.data} bundle={b} sessionId={sessionId} cmp={cmp.data} active={active} live={isLive ? feed.buffer : null} />}
                   {circuit.data && (
-                    <div className="pointer-events-none absolute left-2 top-2 space-y-1 text-[13px]">
-                      <div className="pointer-events-auto rounded border border-line-2 bg-ink-1/90 px-2 py-1 text-fg-2" title={JSON.stringify(circuit.data.provenance, null, 1)}>
-                        Driven-line estimate · ±{circuit.data.accuracyM?.toFixed(1) ?? "?"} m · {circuit.data.confidence} · {circuit.data.lengthM.toFixed(0)} m
-                      </div>
-                      <div className="rounded border border-line-2 bg-ink-1/90 px-2 py-1 text-fg-3">
-                        Corners C1… are detected from speed, not official turn numbers · ribbon width is visual only
-                        <br />
-                        Markers interpolate between measured position samples (~4 Hz); hidden when no sample within 2 s
-                      </div>
+                    <div className="absolute left-2 top-2 max-w-[min(420px,90%)] text-[13px]">
+                      <button
+                        type="button"
+                        onClick={() => setMapInfo(!mapInfo)}
+                        aria-expanded={mapInfo}
+                        className="flex items-center gap-2 rounded-[5px] border border-line-2 bg-ink-0/85 px-2 py-1 text-fg-2 hover:text-fg"
+                        title={JSON.stringify(circuit.data.provenance, null, 1)}
+                      >
+                        <span className="num text-fg">{circuit.data.lengthM.toFixed(0)} m</span>
+                        <span className="text-fg-3">±{circuit.data.accuracyM?.toFixed(1) ?? "?"} m · {circuit.data.confidence}</span>
+                        <span className="text-fg-3">{mapInfo ? "▴" : "ⓘ"}</span>
+                      </button>
+                      {mapInfo && (
+                        <div className="mt-1 space-y-1 rounded-[5px] border border-line-2 bg-ink-0/90 px-2 py-1.5 text-fg-3">
+                          <div>Driven line estimated from measured car positions.</div>
+                          <div>Corners C1… are detected from speed, not official turn numbers. Ribbon width is visual only.</div>
+                          <div>Markers interpolate between position samples (~4 Hz) and hide when no sample is within 2 s.</div>
+                          <div>DRS / straight-mode zones and the speed-trap position are estimated from the longest straights (the trap speed itself is measured). Buildings, stands and trees are illustrative, not mapped.</div>
+                        </div>
+                      )}
                     </div>
                   )}
                   {circuit.data && (
-                    <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-1 rounded border border-line-2 bg-ink-1/90 px-2 py-1">
+                    <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-1 rounded-[6px] border border-line-2 bg-ink-0/85 px-2 py-1">
                       <span className="label mr-1">Overlay</span>
                       {OVERLAYS.map((o) => (
                         <Btn key={o.id} active={overlay === o.id} onClick={() => set({ overlay: o.id })} disabled={o.id !== "none" && !cmp.data}>
@@ -238,6 +276,13 @@ export default function CommandCenter({ active = true }: { active?: boolean }) {
                           <span className="text-lemon">■ {cmp.data.a.driverCode} gaining</span> <span className="text-teal">■ {cmp.data.b.driverCode} gaining</span>
                         </span>
                       )}
+                      <span className="mx-1 h-4 w-px bg-line-2" />
+                      <span className="label mr-1">Layers</span>
+                      {LAYERS.map((l) => (
+                        <Btn key={l.id} active={layers[l.id]} onClick={() => set({ layers: { ...layers, [l.id]: !layers[l.id] } })} title={l.title}>
+                          {l.label}
+                        </Btn>
+                      ))}
                       {cmp.isLoading && <span className="text-[13px] text-fg-3">comparing…</span>}
                       {cmp.isError && <span className="text-[13px] text-bad">{(cmp.error as Error).message}</span>}
                       <span className="text-[13px] text-fg-3">· click track to set cursor</span>

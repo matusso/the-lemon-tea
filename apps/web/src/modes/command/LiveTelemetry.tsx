@@ -5,7 +5,7 @@ import type { Driver } from "@lemon-tea/shared-types";
 import { estimateWingsOpen } from "@lemon-tea/telemetry-core";
 import type { CircuitResponse } from "../../api";
 import { AXIS, baseTextStyle, EChart, type EOption } from "../../components/EChart";
-import { COLOR_A, COLOR_B } from "../../components/TelemetryCharts";
+import { AXIS_NAME, COLOR_A, COLOR_B, CURSOR_LINE, driverLine, TOOLTIP } from "../../components/TelemetryCharts";
 import { Empty, fmtLap, KindBadge } from "../../components/ui";
 
 type Chan = "speed" | "throttle" | "brake" | "aero";
@@ -59,9 +59,9 @@ export function LiveTelemetry({ buffer, revision, circuit, drivers, a, b }: { bu
       chans.forEach((c, i) => {
         const step = c.key === "brake" || c.key === "aero" ? "end" : undefined;
         if (prev)
-          series.push({ name: `${who} last lap`, type: "line", xAxisIndex: i, yAxisIndex: i, showSymbol: false, silent: true, step, lineStyle: { width: 1, color, opacity: 0.35, type: "dashed" }, itemStyle: { color }, data: prev.distance.map((d, k) => [d, values(prev, c.key)[k]!]) });
+          series.push({ name: `${who} last lap`, type: "line", xAxisIndex: i, yAxisIndex: i, showSymbol: false, silent: true, step, lineStyle: { width: 1.2, color, opacity: 0.4, type: [4, 3] }, itemStyle: { color }, data: prev.distance.map((d, k) => [d, values(prev, c.key)[k]!]) });
         if (cur && cur !== prev)
-          series.push({ name: `${who} now`, type: "line", xAxisIndex: i, yAxisIndex: i, showSymbol: false, step, lineStyle: { width: 1.8, color }, itemStyle: { color }, data: cur.distance.map((d, k) => [d, values(cur, c.key)[k]!]) });
+          series.push({ name: `${who} now`, type: "line", xAxisIndex: i, yAxisIndex: i, showSymbol: false, step, z: 3, lineStyle: driverLine(color), itemStyle: { color }, data: cur.distance.map((d, k) => [d, values(cur, c.key)[k]!]) });
       });
     };
     add(la, COLOR_A, code(a));
@@ -69,9 +69,9 @@ export function LiveTelemetry({ buffer, revision, circuit, drivers, a, b }: { bu
     return {
       animation: false,
       textStyle: baseTextStyle,
-      legend: { top: 0, textStyle: { color: "#b9bbc6", fontSize: 13 }, itemWidth: 14 },
-      tooltip: { trigger: "axis", backgroundColor: "rgba(18,20,24,0.95)", borderColor: "#31363f", textStyle: { color: "#f5f5f7", fontSize: 13 } },
-      axisPointer: { link: [{ xAxisIndex: "all" }] },
+      legend: { top: 0, textStyle: { color: "#c9c9d1", fontSize: 12 }, itemWidth: 16, itemHeight: 3, icon: "rect" },
+      tooltip: { trigger: "axis", ...TOOLTIP, textStyle: { ...baseTextStyle, color: "#ffffff" } },
+      axisPointer: { link: [{ xAxisIndex: "all" }], label: { show: false }, lineStyle: CURSOR_LINE },
       grid: chans.map((_, i) => ({ left: 52, right: 14, top: `${top + i * (h + gapPct)}%`, height: `${h}%` })),
       xAxis: chans.map((_, i) => ({
         type: "value" as const,
@@ -85,11 +85,11 @@ export function LiveTelemetry({ buffer, revision, circuit, drivers, a, b }: { bu
       yAxis: chans.map((c, i) => ({
         type: "value" as const,
         gridIndex: i,
-        name: c.label,
-        nameTextStyle: { color: AXIS.color, fontSize: 12, align: "left" as const },
+        name: c.label.toUpperCase(),
+        nameTextStyle: { ...AXIS_NAME, align: "left" as const },
         ...(c.key === "brake" || c.key === "aero" ? { min: 0, max: 1, interval: 1 } : c.key === "throttle" ? { min: 0, max: 100 } : {}),
         axisLabel: { color: AXIS.color },
-        splitLine: { lineStyle: { color: AXIS.split } },
+        splitLine: { lineStyle: { color: AXIS.split, type: "dashed" as const } },
       })),
       series: series as EOption["series"],
     };

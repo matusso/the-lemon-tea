@@ -10,7 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@fontsource/titillium-web": "^5.3.0",
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource/mrs-saint-delafield": "^5.3.0",
+    "@fontsource/space-mono": "^5.3.0",
     "@lemon-tea/circuit-engine": "*",
     "@lemon-tea/shared-types": "*",
     "@lemon-tea/synchronization": "*",

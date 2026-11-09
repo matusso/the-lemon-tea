@@ -2,11 +2,12 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
-import "@fontsource/titillium-web/400.css";
-import "@fontsource/titillium-web/600.css";
-import "@fontsource/titillium-web/700.css";
-import "@fontsource/titillium-web/700-italic.css";
-import "@fontsource/titillium-web/900.css";
+// Wide-axis Archivo for display and body (font-stretch 100–125%), Space Mono for figures,
+// Mrs Saint Delafield for the red venue script.
+import "@fontsource-variable/archivo/wdth.css";
+import "@fontsource/space-mono/400.css";
+import "@fontsource/space-mono/700.css";
+import "@fontsource/mrs-saint-delafield/400.css";
 import "./styles.css";
 
 const qc = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false } } });

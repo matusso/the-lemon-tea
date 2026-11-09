@@ -1,25 +1,33 @@
 @import "tailwindcss";
 
+/* Design language taken from the F1 season-intro graphics: black and carbon surfaces, one
+   saturated F1 red, white type; heavy wide display face, letter-spaced monospace figures,
+   red script for venue names, faint outlined "ghost" lettering, red slanted tags.
+   Data colours (sector purple/green, compounds, driver A/B) stay separate from the chrome. */
 @theme {
-  /* Carbon surfaces, F1 red for interface accents, F1 timing colours for data. */
-  --color-ink-0: #08090e;
-  --color-ink-1: #11131b;
-  --color-ink-2: #181b26;
-  --color-ink-3: #232736;
-  --color-line: #232838;
-  --color-line-2: #343a4f;
-  --color-fg: #f5f5f7;
-  --color-fg-2: #b9bbc6;
-  --color-fg-3: #82858f;
+  --color-ink-0: #070709;
+  --color-ink-1: #101015;
+  --color-ink-2: #17171e;
+  --color-ink-3: #22222b;
+  --color-line: #26262f;
+  --color-line-2: #3a3a46;
+  --color-fg: #ffffff;
+  --color-fg-2: #c9c9d1;
+  --color-fg-3: #8a8a96;
+  --color-silver: #e9e9ec;
   --color-f1: #e10600;
-  --color-f1-hi: #ff1e00;
+  --color-f1-hi: #ff2b1c;
+  --color-f1-lo: #8a0400;
+  /* driver A / driver B highlights and secondary data series */
   --color-lemon: #ffd12e;
   --color-teal: #27c5e8;
   --color-good: #00d26a;
   --color-bad: #ff4b4b;
   --color-purple: #b44cf0;
-  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-  --font-sans: "Titillium Web", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Archivo Variable", "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Archivo Variable", "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-script: "Mrs Saint Delafield", "Brush Script MT", cursive;
 }
 
 html,
@@ -31,69 +39,119 @@ body,
 body {
   margin: 0;
   background: var(--color-ink-0);
-  font-feature-settings: "ss01";
   color: var(--color-fg);
   font-family: var(--font-sans);
   font-size: 15px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
-/* App backdrop: carbon with a pit-lane glow (F1 red top-left, timing teal bottom-right) and a fine
-   technical grid. Panels float on it as glass cards. */
+/* Backdrop: black with red light falling in from the top-left, like the intro's red-lit skies. */
 .grid-bg {
   background-color: var(--color-ink-0);
   background-image:
-    radial-gradient(1100px 520px at 0% -10%, rgba(225, 6, 0, 0.16), transparent 60%),
-    radial-gradient(900px 600px at 105% 110%, rgba(39, 197, 232, 0.1), transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: auto, auto, 32px 32px, 32px 32px;
+    radial-gradient(1200px 520px at -5% -20%, rgba(225, 6, 0, 0.22), transparent 62%),
+    radial-gradient(900px 500px at 110% 120%, rgba(225, 6, 0, 0.08), transparent 60%);
 }
 
-/* Broadcast-style display type: bold, italic, uppercase. */
+/* Heavy, wide, upright display type ("BAHRAIN"). */
 .display {
-  font-family: var(--font-sans);
-  font-weight: 700;
-  font-style: italic;
+  font-family: var(--font-display);
+  font-weight: 850;
+  font-stretch: 125%;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: -0.005em;
+  line-height: 1;
+}
+
+/* Letter-spaced small caps ("ROUND 01"). */
+.label {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-fg-3);
+}
+
+/* Spaced monospace figures ("12-14 MAR 2027"). */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.date {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+/* Red handwritten venue name ("Sakhir"). */
+.script {
+  font-family: var(--font-script);
+  color: var(--color-f1-hi);
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* Outlined background lettering. */
+.ghost {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-stretch: 125%;
+  text-transform: uppercase;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.09);
+  line-height: 0.8;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Slanted red tag ("F1 SPRINT"). */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 10px 0 8px;
+  background: var(--color-f1);
+  color: #fff;
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  white-space: nowrap;
 }
 
 .card {
   border: 1px solid var(--color-line);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(24, 27, 38, 0.92), rgba(15, 17, 24, 0.94));
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 10px 30px -12px rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  background: var(--color-ink-1);
+  box-shadow: 0 12px 32px -18px rgba(0, 0, 0, 0.9);
   overflow: hidden;
 }
 
-/* Racing stripe under the app header. */
-.stripe {
-  height: 2px;
-  background: linear-gradient(90deg, var(--color-f1) 0%, var(--color-f1) 45%, var(--color-lemon) 70%, var(--color-teal) 100%);
-  box-shadow: 0 0 12px rgba(225, 6, 0, 0.6);
+/* Red frame with a soft glow, for the one panel that matters most on a screen. */
+.card-hero {
+  border-color: rgba(225, 6, 0, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(225, 6, 0, 0.15),
+    0 0 28px -8px rgba(225, 6, 0, 0.45);
 }
 
-/* Layout gaps between panels show the backdrop instead of a hairline grid. */
+.stripe {
+  height: 3px;
+  background: var(--color-f1);
+}
+
 .panes {
   gap: 8px;
   padding: 8px;
   background: transparent;
-}
-
-.num {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-fg-3);
 }
 
 ::-webkit-scrollbar {
@@ -101,11 +159,11 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2c3142;
+  background: #2a2a33;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3d4459;
+  background: #44444f;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -113,16 +171,18 @@ body {
 
 [data-separator] {
   background: transparent;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition: background 0.15s;
   border-radius: 2px;
 }
 [data-separator]:hover,
 [data-separator][data-separator-state="drag"] {
   background: var(--color-f1);
-  box-shadow: 0 0 10px rgba(225, 6, 0, 0.7);
 }
 
 input[type="range"] {
+  accent-color: var(--color-f1);
+}
+input[type="checkbox"] {
   accent-color: var(--color-f1);
 }
 
@@ -138,10 +198,17 @@ input[type="password"] {
   padding: 4px 8px;
   font-size: 14px;
 }
+input[type="number"] {
+  font-family: var(--font-mono);
+}
 select:focus,
 input:focus {
   outline: 1px solid var(--color-f1);
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.18);
+  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.2);
+}
+:focus-visible {
+  outline: 2px solid var(--color-f1-hi);
+  outline-offset: 2px;
 }
 
 .car-label {
@@ -150,9 +217,29 @@ input:focus {
   font-size: 13px;
   font-weight: 700;
   padding: 1px 5px;
-  border-radius: 3px;
-  background: rgba(8, 9, 14, 0.86);
+  border-radius: 2px;
+  background: rgba(7, 7, 9, 0.88);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
   transform: translate(8px, -14px);
+}
+
+/* Small slanted tag pinned to the 3D map (start/finish, sectors, DRS, speed trap). */
+.map-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 9px 0 7px;
+  background: var(--color-f1);
+  color: #fff;
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  user-select: none;
 }

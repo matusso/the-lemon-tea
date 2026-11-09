@@ -226,7 +226,14 @@ export class StrategySimulationService {
   ) {}
 
   /** Assemble field and parameters from data: pace from long runs, grid from qualifying/race. */
-  async buildField(ctx: AuthContext, raceSessionId: string, paceSessionIds: string[], gridSessionId?: string, totalLapsIn?: number): Promise<FieldBuild> {
+  async buildField(
+    ctx: AuthContext,
+    raceSessionId: string,
+    paceSessionIds: string[],
+    gridSessionId?: string,
+    totalLapsIn?: number,
+    include: { qualifyingPace?: boolean; degradationFit?: boolean } = {},
+  ): Promise<FieldBuild> {
     const race = await this.access.session(ctx, raceSessionId, "simulations:execute");
     let rb = await this.timing.bundleFor(race);
     const notes: string[] = [];
@@ -244,7 +251,9 @@ export class StrategySimulationService {
     const paceIds = paceSessionIds.length ? paceSessionIds : [];
     const pace = paceIds.length ? await this.practice.longRuns(ctx, paceIds, pp) : null;
     let deg: Partial<SimParams["degradation"]> = {};
-    if (pace) {
+    if (pace && include.degradationFit === false) {
+      notes.push("Tyre degradation uses model defaults (fit from pace sessions turned off).");
+    } else if (pace) {
       const { laps } = await this.practice.classified(ctx, paceIds);
       const rep = degradationReport(fitStints(laps, pp), pp);
       for (const c of rep.compounds) {
@@ -272,7 +281,7 @@ export class StrategySimulationService {
       const best = new Map<number, number>();
       for (const l of gb.laps) if (l.lapTime !== null && !l.isPitOutLap) best.set(l.driverNumber, Math.min(best.get(l.driverNumber) ?? Infinity, l.lapTime));
       const pole = Math.min(...best.values());
-      for (const [d, t] of best) qualiGap.set(d, t - pole);
+      if (include.qualifyingPace !== false) for (const [d, t] of best) qualiGap.set(d, t - pole);
       // no classification (e.g. a practice session): best-lap order
       if (!gridOrder.length) gridOrder = [...best].sort((a, b) => a[1] - b[1]).map(([d]) => d);
       // drivers without a timed lap start at the back in car-number order
@@ -373,6 +382,8 @@ export class StrategySimulationService {
   async simulate(ctx: AuthContext, q: {
     sessionId: string;
     paceSessionIds?: string[] | undefined;
+    gridSessionId?: string | undefined;
+    include?: { qualifyingPace?: boolean; degradationFit?: boolean } | undefined;
     driverNumber: number;
     totalLaps?: number | undefined;
     strategies: StrategyCandidate[];
@@ -381,7 +392,7 @@ export class StrategySimulationService {
     scenario: { safetyCarProbabilityPerLap?: number | undefined; vscProbabilityPerLap?: number | undefined; pitLossSeconds?: number | undefined; trackTempDeltaC?: number | undefined };
   }) {
     this.access.require(ctx, "simulations:execute");
-    const { field, params, notes } = await this.buildField(ctx, q.sessionId, q.paceSessionIds ?? [], undefined, q.totalLaps);
+    const { field, params, notes } = await this.buildField(ctx, q.sessionId, q.paceSessionIds ?? [], q.gridSessionId, q.totalLaps, q.include);
     if (!field.some((c) => c.driverNumber === q.driverNumber)) throw new LemonTeaError("not_found", `Driver #${q.driverNumber} not in the race field`);
     const p: SimParams = {
       ...params,

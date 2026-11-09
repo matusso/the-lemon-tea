@@ -67,6 +67,23 @@ describe("StrategySimulationService before the race", () => {
     expect(f.notes.join(" ")).toMatch(/no qualifying ingested yet/);
   });
 
+  it("takes the grid from the session the user picks", async () => {
+    const s = await weekend(true);
+    // FP1 has no classification: best-lap order 1,2,3,4 instead of qualifying's 3,1,4,2
+    const f = await s.strategy.buildField(systemContext(), "synthetic:race", [], "synthetic:fp1", 50);
+    expect(f.field.map((c) => c.driverNumber)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("leaves qualifying pace and the degradation fit out when the user excludes them", async () => {
+    const s = await weekend(true);
+    const withQ = await s.strategy.buildField(systemContext(), "synthetic:race", [], undefined, 50);
+    expect(new Set(withQ.field.map((c) => c.basePace)).size).toBeGreaterThan(1);
+    const noQ = await s.strategy.buildField(systemContext(), "synthetic:race", [], undefined, 50, { qualifyingPace: false });
+    expect(new Set(noQ.field.map((c) => c.basePace)).size).toBe(1);
+    const noFit = await s.strategy.buildField(systemContext(), "synthetic:race", ["synthetic:fp1"], undefined, 50, { degradationFit: false });
+    expect(noFit.notes.join(" ")).toMatch(/degradation uses model defaults/);
+  });
+
   it("explains what is missing when nothing of the weekend is ingested", async () => {
     const store = new MemoryStore();
     await store.upsertSession(null, bundle("synthetic:race", "Race", "race", 3, false));
