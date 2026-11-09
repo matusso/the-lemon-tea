@@ -13,12 +13,14 @@ const TelemetryLab = lazy(() => import("./modes/TelemetryLab"));
 const Performance = lazy(() => import("./modes/Performance"));
 const Strategy = lazy(() => import("./modes/Strategy"));
 const Research = lazy(() => import("./modes/Research"));
+const Battles = lazy(() => import("./modes/Battles"));
 
 const MODES: { id: Mode; label: string; short: string; key: string }[] = [
   { id: "command", label: "Command Center", short: "Command", key: "A" },
   { id: "lab", label: "Telemetry Lab", short: "Telemetry", key: "B" },
   { id: "intel", label: "Performance Intelligence", short: "Performance", key: "C" },
   { id: "strategy", label: "Strategy Simulator", short: "Strategy", key: "D" },
+  { id: "battle", label: "Battle Analysis", short: "Battles", key: "F" },
   { id: "research", label: "Research", short: "Research", key: "E" },
 ];
 
@@ -48,14 +50,41 @@ function weekendDates(startIso: string, endIso: string): string {
   return `${dd(a)} ${MONTH[a.getMonth()]} - ${dd(b)} ${MONTH[b.getMonth()]} ${b.getFullYear()}`;
 }
 
+/**
+ * Official round number. Only the weekends you loaded are stored, so it is counted on the season
+ * calendar (the F1 live-timing index, through the ingest listing), skipping pre-season testing
+ * (sessions named "Day 1…"). Without that calendar no number is shown rather than a wrong one.
+ */
+function useRound(year: number | null, meetingId: string | null): number {
+  const key = meetingId?.startsWith("f1lt:") ? meetingId.slice(5) : null;
+  const cal = useQuery({
+    queryKey: ["season-calendar", "f1lt", year],
+    queryFn: () => api<{ meetingKey: string; name: string; dateStart: string }[]>(`/api/ingest/discover?source=f1lt&year=${year}`),
+    enabled: year !== null && key !== null,
+    retry: false,
+    staleTime: 3_600_000,
+  });
+  return useMemo(() => {
+    if (!cal.data || key === null) return 0;
+    const first = new Map<string, string>();
+    const raceWeekend = new Set<string>();
+    for (const s of cal.data) {
+      if (!/^day\s*\d/i.test(s.name) && !/test/i.test(s.name)) raceWeekend.add(s.meetingKey);
+      const cur = first.get(s.meetingKey);
+      if (!cur || s.dateStart < cur) first.set(s.meetingKey, s.dateStart);
+    }
+    const order = [...raceWeekend].sort((a, b) => first.get(a)!.localeCompare(first.get(b)!));
+    return order.indexOf(key) + 1;
+  }, [cal.data, key]);
+}
+
 /** Weekend title card: round, venue script, dates, meeting name over outlined ghost lettering. */
 function WeekendBand() {
   const { year, meetingId } = useUi();
   const meetings = useQuery({ queryKey: ["meetings", year], queryFn: () => get.meetings(year!), enabled: year !== null });
   const sessions = useQuery({ queryKey: ["sessions", meetingId], queryFn: () => get.sessions(meetingId!, false), enabled: !!meetingId });
   const m = meetings.data?.find((x) => x.id === meetingId);
-  const rounds = [...(meetings.data ?? [])].filter((x) => !/test/i.test(x.name)).sort((a, b) => a.dateStart.localeCompare(b.dateStart));
-  const round = m ? rounds.findIndex((x) => x.id === m.id) + 1 : 0;
+  const round = useRound(year, meetingId);
   const ss = sessions.data ?? [];
   const start = ss.length ? ss.reduce((a, x) => (x.dateStart < a ? x.dateStart : a), ss[0]!.dateStart) : m?.dateStart;
   const end = ss.length ? ss.reduce((a, x) => ((x.dateEnd ?? x.dateStart) > a ? (x.dateEnd ?? x.dateStart) : a), ss[0]!.dateEnd ?? ss[0]!.dateStart) : m?.dateStart;
@@ -308,7 +337,7 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.altKey && /^[1-5]$/.test(e.key)) set({ mode: MODES[Number(e.key) - 1]!.id });
+      if (e.altKey && /^[1-6]$/.test(e.key)) set({ mode: MODES[Number(e.key) - 1]!.id });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -363,6 +392,7 @@ export function App() {
           {mode === "lab" && <TelemetryLab />}
           {mode === "intel" && <Performance />}
           {mode === "strategy" && <Strategy />}
+          {mode === "battle" && <Battles />}
           {mode === "research" && <Research />}
         </Suspense>
       </main>

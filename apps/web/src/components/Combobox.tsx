@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export interface ComboOption<V extends string | number> {
   value: V;
@@ -79,6 +80,8 @@ export function Combobox<V extends string | number>({
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<CSSProperties | null>(null);
   const listId = useId();
   const selected = options.find((o) => o.value === value) ?? null;
 
@@ -108,20 +111,50 @@ export function Combobox<V extends string | number>({
   }, [open, query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (open) input.current?.focus();
+    if (open) input.current?.focus({ preventScroll: true });
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) close();
+      const t = e.target as Node;
+      if (!root.current?.contains(t) && !pop.current?.contains(t)) close();
     };
     window.addEventListener("mousedown", onDown);
     return () => window.removeEventListener("mousedown", onDown);
   }, [open]);
 
+  // The list is portalled to <body> with fixed positioning: an ancestor with overflow:hidden (the
+  // weekend band) can neither clip it nor be scrolled by it, and it paints above every panel.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const r = root.current?.getBoundingClientRect();
+      if (!r) return;
+      const w = pop.current?.offsetWidth ?? r.width;
+      const h = pop.current?.offsetHeight ?? 0;
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+      const below = r.bottom + 4 + h <= window.innerHeight - 8 || r.top < h + 12;
+      setPlace({ left, top: below ? r.bottom + 4 : r.top - 4 - h, minWidth: r.width });
+    };
+    update();
+    const raf = requestAnimationFrame(update); // re-measure once the list has rendered
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open, query]);
+
+  // Scroll only the list itself (scrollIntoView would also scroll clipped ancestors and shift the top bar).
   useEffect(() => {
-    list.current?.querySelector(`[data-idx="${active}"]`)?.scrollIntoView({ block: "nearest" });
+    const l = list.current;
+    const el = l?.querySelector<HTMLElement>(`[data-idx="${active}"]`);
+    if (!l || !el) return;
+    if (el.offsetTop < l.scrollTop) l.scrollTop = el.offsetTop - 4;
+    else if (el.offsetTop + el.offsetHeight > l.scrollTop + l.clientHeight) l.scrollTop = el.offsetTop + el.offsetHeight - l.clientHeight + 4;
   }, [active, open]);
 
   const move = (dir: 1 | -1) => {
@@ -173,10 +206,11 @@ export function Combobox<V extends string | number>({
           <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {open && (
+      {open && createPortal(
         <div
-          className="absolute left-0 top-[calc(100%+4px)] z-[60] overflow-hidden rounded-lg border border-line-2 bg-ink-2/95 shadow-2xl shadow-black/60 backdrop-blur"
-          style={{ minWidth: "100%", width: "max-content", maxWidth: maxListWidth }}
+          ref={pop}
+          className="fixed z-[90] overflow-hidden rounded-lg border border-line-2 bg-ink-2/95 shadow-2xl shadow-black/60 backdrop-blur"
+          style={{ width: "max-content", maxWidth: maxListWidth, ...(place ?? { visibility: "hidden" }) }}
         >
           <div className="flex items-center gap-2 border-b border-line px-2.5">
             <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden className="shrink-0 text-fg-3">
@@ -235,7 +269,8 @@ export function Combobox<V extends string | number>({
               );
             })}
           </ul>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

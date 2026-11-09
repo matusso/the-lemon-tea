@@ -57,6 +57,7 @@ const LAYERS: { id: keyof MapLayers; label: string; title: string }[] = [
   { id: "sectors", label: "Sectors", title: "Sector colour bands and boundaries" },
   { id: "drs", label: "DRS", title: "Estimated DRS / straight-mode zones" },
   { id: "trap", label: "Trap", title: "Speed trap (estimated position, measured speed)" },
+  { id: "apexes", label: "Apexes", title: "Geometric apexes (peak curvature of the driven line), inside marked; used by Battle Analysis" },
   { id: "scenery", label: "Scenery", title: "Illustrative pit building, grandstands, buildings and trees" },
 ];
 

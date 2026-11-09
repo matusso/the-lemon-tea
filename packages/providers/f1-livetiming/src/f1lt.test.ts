@@ -56,6 +56,13 @@ describe("stream decoding", () => {
     expect(timeOrigin([{ offsetMs: 1000, utc: 10_000 }, { offsetMs: 2000, utc: 11_200 }])).toBe(9200);
   });
 
+  it("ignores a corrupt timestamp far above the others instead of shifting the session", () => {
+    const H33 = 33 * 3600_000;
+    const rows = [0, 1, 2, 3, 4].map((i) => ({ offsetMs: i * 5000, utc: 1_000_000 + i * 5000 + (i === 2 ? 0 : -150) }));
+    rows.push({ offsetMs: 30_000, utc: 1_000_000 + 30_000 + H33 }); // one bad Utc
+    expect(timeOrigin(rows)).toBe(1_000_000);
+  });
+
   it("parses gaps", () => {
     expect(parseGap("+1.234")).toEqual({ seconds: 1.234, lapsDown: null });
     expect(parseGap("1L")).toEqual({ seconds: null, lapsDown: 1 });

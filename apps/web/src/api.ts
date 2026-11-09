@@ -200,6 +200,12 @@ export const get = {
   bundle: (id: string) => api<TimingBundle>(`/api/sessions/${enc(id)}/bundle`),
   circuit: (id: string) => api<CircuitResponse>(`/api/sessions/${enc(id)}/circuit`),
   laps: (id: string, driver: number) => api<LapRow[]>(`/api/sessions/${enc(id)}/laps/${driver}`),
-  replay: (id: string, from: number, to: number) => api<ReplayWindow>(`/api/sessions/${enc(id)}/replay?from=${Math.floor(from)}&to=${Math.ceil(to)}&hz=4`),
+  replay: (id: string, from: number, to: number, hz = 4) => api<ReplayWindow>(`/api/sessions/${enc(id)}/replay?from=${Math.floor(from)}&to=${Math.ceil(to)}&hz=${hz}`),
+  /** Raw measured speed of one car in a session-time window (≤ 30 min; maxPoints keeps ~4 Hz raw for ≤ 20 min). */
+  speed: (id: string, driver: number, from: number, to: number) =>
+    api<{ channels: { t: { values: number[] }; speed: { values: number[] } } }>(`/api/sessions/${enc(id)}/telemetry?driver=${driver}&from=${Math.floor(from)}&to=${Math.ceil(to)}&maxPoints=5000`).then((r) => ({
+      t: r.channels.t.values,
+      speed: r.channels.speed.values,
+    })),
   sources: () => api<Record<string, unknown>[]>("/api/sources"),
 };

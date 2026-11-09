@@ -4,6 +4,7 @@ import { Html, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { nearestDistance, pointAtDistance } from "@lemon-tea/circuit-engine";
+import { buildTrackFrame, detectApexes } from "@lemon-tea/telemetry-core";
 import { positionAt, type LiveBuffer, type TimingBundle } from "@lemon-tea/synchronization";
 import type { CircuitResponse, CompareResponse } from "../../api";
 import { clock } from "../../state/clock";
@@ -424,6 +425,46 @@ function Markers({ geo }: { geo: Geo }) {
   );
 }
 
+/** Geometric apexes: a red post at each apex with a short tick pointing to the inside of the corner. */
+function Apexes({ geo }: { geo: Geo }) {
+  const ex = useUi((s) => s.elevationExaggeration);
+  const apexes = useMemo(() => {
+    const f = buildTrackFrame(geo);
+    return detectApexes(f).map((a) => {
+      const i = f.s.findIndex((s) => s >= a.distance);
+      const k = Math.max(0, i);
+      const side = a.direction === "left" ? 1 : -1; // inside = left normal for a left-hander
+      return { a, nx: -f.ty[k]! * side, ny: f.tx[k]! * side };
+    });
+  }, [geo]);
+  return (
+    <group>
+      {apexes.map(({ a, nx, ny }) => {
+        const z = elevationAtDistance(geo, a.distance, ex);
+        const inner = toScene(a.x + nx * 10, a.y + ny * 10, z + 1);
+        const p = toScene(a.x, a.y, z);
+        return (
+          <group key={a.number}>
+            <mesh position={[p.x, p.y + 4, p.z]}>
+              <cylinderGeometry args={[1.2, 1.2, 8, 10]} />
+              <meshBasicMaterial color="#e10600" />
+            </mesh>
+            <mesh position={[(p.x + inner.x) / 2, z + 1, (p.z + inner.z) / 2]} rotation={[0, Math.atan2(-(inner.x - p.x), -(inner.z - p.z)), 0]}>
+              <boxGeometry args={[1.2, 0.6, 10]} />
+              <meshBasicMaterial color="#e10600" />
+            </mesh>
+            <Html position={toScene(a.x + nx * 22, a.y + ny * 22, z + 8)} center zIndexRange={LABEL_Z}>
+              <div className="map-tag" style={{ background: "#e10600" }} title={`${a.label}: geometric apex, ${a.direction}-hander, ${a.turnDeg}°, radius ≈ ${a.radiusM} m${a.firstInGroup ? "" : " (later element of a complex)"}. Numbered from the start line; may differ from official turn numbers.`}>
+                {a.label}
+              </div>
+            </Html>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 function Cursor({ geo, cmp }: { geo: Geo; cmp: CompareResponse | undefined }) {
   const cursor = useUi((s) => s.cursorDistance);
   const ex = useUi((s) => s.elevationExaggeration);
@@ -605,6 +646,7 @@ export function Circuit3D({
       {layers.sectors && <SectorBands geo={geo} />}
       {layers.drs && <DrsZones geo={geo} zones={zones} />}
       {layers.trap && <SpeedTrap geo={geo} index={trap} top={top} />}
+      {layers.apexes && <Apexes geo={geo} />}
       <Markers geo={geo} />
       <Cursor geo={geo} cmp={cmp} />
       <Cars geo={geo} bundle={bundle} sessionId={sessionId} origin={geo.origin} live={live} />

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type Mode = "command" | "lab" | "intel" | "strategy" | "research";
+export type Mode = "command" | "lab" | "intel" | "strategy" | "battle" | "research";
 export type CameraMode = "top" | "iso" | "orbit" | "follow" | "corner";
 export type Overlay = "none" | "delta" | "speed" | "throttle" | "brake";
 /** Optional 3D/2D map layers. */
@@ -9,6 +9,7 @@ export interface MapLayers {
   sectors: boolean;
   drs: boolean;
   trap: boolean;
+  apexes: boolean;
 }
 
 export interface LapPick {
@@ -62,7 +63,7 @@ export const useUi = create<UiState>((set, get) => ({
   focusCorner: null,
   overlay: "delta",
   elevationExaggeration: 1,
-  layers: { scenery: true, sectors: true, drs: true, trap: true, ...(persisted.layers ?? {}) },
+  layers: { scenery: true, sectors: true, drs: true, trap: true, apexes: true, ...(persisted.layers ?? {}) },
   lapA: { sessionId: null, driverNumber: null, lapNumber: null },
   lapB: { sessionId: null, driverNumber: null, lapNumber: null },
   set: (p) => set(p),
